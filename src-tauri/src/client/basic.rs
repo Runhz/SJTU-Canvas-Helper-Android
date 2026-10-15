@@ -19,6 +19,27 @@ use crate::{
 
 // Apis here are for canvas
 impl Client {
+    pub fn mobile_set_cookies(&self, cookie: &str) {
+        for url in [super::constants::AUTH_URL, super::constants::MY_SJTU_URL] {
+            self.jar.add_cookie_str(cookie, &tauri::Url::parse(url).unwrap());
+        }
+    }
+
+    pub async fn mobile_resolve_download(&self, url: &str, token: &str) -> Result<(String, std::collections::HashMap<String,String>)> {
+        use reqwest::cookie::CookieStore;
+        let parsed=tauri::Url::parse(url).map_err(|_|AppError::FilePreview("Invalid download URL".into()))?;
+        if parsed.scheme()!="https" { return Err(AppError::FilePreview("Downloads require HTTPS".into())); }
+        let mut request=self.cli.get(parsed.clone());
+        if parsed.origin().ascii_serialization()=="https://oc.sjtu.edu.cn" { request=request.bearer_auth(token); }
+        let response=request.send().await?.error_for_status()?;
+        let final_url=response.url().clone();
+        if final_url.scheme()!="https" { return Err(AppError::FilePreview("Invalid download redirect".into())); }
+        let mut headers=std::collections::HashMap::new();
+        if final_url.origin().ascii_serialization()=="https://oc.sjtu.edu.cn" { headers.insert("Authorization".into(),format!("Bearer {token}")); }
+        if let Some(cookie)=self.jar.cookies(&final_url) { headers.insert("Cookie".into(),cookie.to_str()?.into()); }
+        Ok((final_url.to_string(),headers))
+    }
+
     #[allow(dead_code)]
     pub fn default() -> Self {
         Self::new(BASE_URL, "", "", "", None)
@@ -790,8 +811,10 @@ impl Client {
         file_path: &str,
     ) -> Result<File> {
         let upload_params = &params.upload_params;
-        let file_fs = fs::read(file_path)?;
-        let file = multipart::Part::bytes(file_fs).file_name("filename.filetype");
+        let stream_file = tokio::fs::File::open(file_path).await?;
+        let length = stream_file.metadata().await?.len();
+        let body = reqwest::Body::wrap_stream(tokio_util::io::ReaderStream::new(stream_file));
+        let file = multipart::Part::stream_with_length(body, length).file_name(upload_params.filename.clone());
         let form = reqwest::multipart::Form::new()
             .text("x-amz-credential", upload_params.x_amz_credential.clone())
             .text("x-amz-algorithm", upload_params.x_amz_algorithm.clone())
@@ -886,7 +909,7 @@ impl Client {
             form.push(("comment[text_comment]", comment.to_owned()));
         }
         self.post_form_with_token(&url, None::<&str>, &form, token)
-            .await?;
+            .await?.error_for_status()?;
         Ok(())
     }
 

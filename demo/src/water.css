@@ -1,0 +1,15 @@
+.water-tank{width:188px;flex:0 0 188px;position:relative;text-align:center;align-self:center;color:var(--text,#1e3435)}
+.water-tank-stage{width:100%;height:190px;position:relative;touch-action:pan-y;cursor:pointer;border-radius:50%;isolation:isolate;background:radial-gradient(ellipse at 50% 65%,rgba(78,188,200,.07),transparent 68%)}
+.water-tank-stage canvas{display:block;width:100%;height:100%;border-radius:50%}
+.water-tank,.water-tank-stage,.water-tank-stage *{-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;outline:none}
+.water-tank-stage canvas{pointer-events:none}
+.water-tank-count{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:-4px;font-variant-numeric:tabular-nums}
+.water-tank-count strong{font-size:21px;font-weight:650;letter-spacing:-.7px}.water-tank-count strong span{font-size:13px;font-weight:450;opacity:.48;letter-spacing:0}.water-tank-count>small{font-size:10px;opacity:.56}
+.water-tank-fallback{position:absolute;inset:16px;border-radius:50%;border:1px solid #99bfc655;overflow:hidden;background:linear-gradient(120deg,#fff6,#9de9f00a);box-shadow:inset 4px 0 6px #fff7,inset -4px 0 12px #4ba5b933}
+.water-tank-fallback>div{position:absolute;bottom:0;width:100%;background:linear-gradient(120deg,#8de1e9ba,#218caac9);border-top:1px solid #ddffff;transition:height .7s ease}
+.water-quality-setting{margin:16px 0;padding:20px;border:1px solid var(--line,#dce4e1);border-radius:22px;background:var(--card,#fff)}
+.water-setting-heading{display:flex;gap:12px;align-items:flex-start}.water-setting-heading>svg{flex:none;margin-top:2px;color:#4c8c98}.water-setting-heading h3{font-size:14px;margin:0 0 6px;font-weight:600}.water-setting-heading p{font-size:12px;line-height:1.6;opacity:.6;margin:0}
+.water-quality-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:18px}.water-quality-options button{padding:14px 6px;border:1px solid var(--line,#dce4e1);border-radius:14px;text-align:center;background:transparent;color:inherit;transition:transform .18s,border-color .2s,background .2s;min-height:72px}.water-quality-options button:active{transform:scale(.96)}.water-quality-options button.selected{border-color:#5b9ba7;background:#5b9ba710}.water-quality-options button>span{display:flex;align-items:center;justify-content:center;gap:4px;font-size:13px;font-weight:600}.water-quality-options small{display:block;margin-top:8px;font-size:10px;opacity:.56;white-space:normal}.water-setting-footnote{display:block;font-size:10px;margin-top:12px;opacity:.48;line-height:1.5}
+@media(max-width:380px){.water-tank{width:150px;flex-basis:150px}.water-tank-stage{height:158px}.water-quality-setting{padding:16px}.water-quality-options{gap:5px}.water-quality-options small{font-size:9px}}
+@media(min-width:768px){.water-tank{width:228px;flex-basis:228px}.water-tank-stage{height:230px}}
+@media(prefers-reduced-motion:reduce){.water-quality-options button,.water-tank-fallback>div{transition:none}}

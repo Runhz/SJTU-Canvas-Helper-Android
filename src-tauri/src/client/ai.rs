@@ -17,9 +17,15 @@ impl Client {
             .extension()
             .and_then(|os_str| os_str.to_str())
             .unwrap_or("");
-        let resp = self.get_request(&file.url, None::<&str>).await?;
-        let data = resp.bytes().await?;
+        let mut resp = self.get_request(&file.url, None::<&str>).await?.error_for_status()?;
+        const LIMIT: usize = 25 * 1024 * 1024;
+        if resp.content_length().is_some_and(|size|size>LIMIT as u64) { return Err(crate::error::AppError::LLMError("文件超过25MB，请选择较小资料".into())); }
+        let mut buffer=Vec::new();
+        while let Some(chunk)=resp.chunk().await? { if buffer.len()+chunk.len()>LIMIT {return Err(crate::error::AppError::LLMError("文件超过25MB，请选择较小资料".into()));}buffer.extend_from_slice(&chunk); }
+        let data = bytes::Bytes::from(buffer);
         let text = self.file_parser.parse(data, ext).await?;
+        if text.trim().is_empty(){ return Err(crate::error::AppError::LLMError("资料没有可提取文字，扫描件请先取得文字版本".into())); }
+        if text.chars().count()>100_000{return Err(crate::error::AppError::LLMError("资料文字过长，请拆分后提问".into()));}
         Ok(text)
     }
 

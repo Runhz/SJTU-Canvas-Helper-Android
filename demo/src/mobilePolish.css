@@ -1,0 +1,42 @@
+/* Mobile-first refinements: a single search header, compact tiles, and a quiet navigation dock. */
+.app-shell .app-header{display:flex;align-items:center;gap:12px;padding:12px 18px;height:70px;border:0;background:var(--bg);flex:none}
+.header-search{display:flex;align-items:center;gap:10px;flex:1;min-width:0;min-height:44px;padding:0 14px;border:1px solid transparent;border-radius:15px;background:var(--surface-soft);color:var(--muted);text-align:left;font-size:12px;transition:background .18s,transform .18s}
+.header-search>span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.header-search:active{transform:scale(.99)}
+.app-header>.icon-button{width:44px;height:44px;min-width:44px;background:var(--card);border-radius:15px;color:var(--text)}
+.no-flex-gap .header-search{margin-right:12px}.no-flex-gap .header-search>svg{margin-right:10px}
+.app-shell .course-grid,.app-shell .recording-course-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:stretch}
+.app-shell .course-grid .item-shell{border-radius:17px;box-shadow:none;overflow:hidden;min-width:0}
+.app-shell .course-grid .item-shell>.course-card{height:auto;flex:1;padding:14px 13px 10px;text-align:left}
+.app-shell .course-card-top{display:flex;align-items:center;gap:8px;margin:0 0 11px;min-height:24px}
+.app-shell .course-card-top>.course-glyph{width:24px;height:24px;margin:0;border-radius:7px;background:transparent}
+.app-shell .course-card-top>.course-glyph>svg{width:20px;height:20px;max-width:none;max-height:none}
+.app-shell .course-card-top>.course-code{display:block;min-width:0;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0}
+.app-shell .course-card h2{font-size:14px;line-height:1.5;font-weight:600;min-height:42px;margin:0 0 6px;letter-spacing:-.2px;word-break:normal;overflow-wrap:anywhere}
+.app-shell .course-card p{font-size:10px;line-height:1.5;margin:0 0 10px}
+.app-shell .course-card p:empty{display:none}
+.app-shell .course-card-bottom{display:flex;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:9px}
+.course-card-bottom>span{display:inline-flex;align-items:center;gap:3px}
+.app-shell .course-grid .item-menu{position:static;display:flex;align-items:center;justify-content:flex-end;gap:5px;align-self:stretch;width:auto;height:34px;min-height:34px;min-width:0;padding:0 13px;margin:0;border:0;border-top:1px solid var(--line);border-radius:0;background:transparent;opacity:1;font-size:10px;color:var(--muted)}
+.assignment-list .item-menu{width:52px;min-width:52px;height:32px;min-height:32px;display:flex;align-items:center;justify-content:center;gap:4px;top:13px;right:12px;font-size:9px;border-radius:9px}
+.assignment-list .assignment-top{padding-right:49px}
+.app-shell .recording-course-card{padding:14px 13px;border-radius:17px;min-height:132px;gap:11px;box-shadow:none;min-width:0;width:100%}
+.app-shell .recording-course-card>svg{width:20px;height:20px;color:var(--accent)}
+.app-shell .recording-course-card>strong{font-size:14px;line-height:1.5;min-height:42px;font-weight:600;flex:1;overflow-wrap:anywhere}
+.app-shell .recording-course-card>span{font-size:10px;line-height:1.5}
+.app-shell:not(.tablet-layout) .bottom-nav{display:flex;justify-content:space-between;align-items:center;flex:none;gap:0;margin:6px 12px calc(10px + env(safe-area-inset-bottom));padding:6px 5px;border:0;border-radius:23px;background:var(--card);box-shadow:0 4px 24px #00000008;backdrop-filter:none}
+.app-shell:not(.tablet-layout) .bottom-nav>button{display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:51px;gap:3px;padding:0;border:0;border-radius:15px;background:transparent;color:var(--subtle)}
+.app-shell:not(.tablet-layout) .bottom-nav>button>span{display:grid;place-items:center;position:relative;width:40px;height:29px;border-radius:11px;transition:background .2s,transform .2s}
+.app-shell:not(.tablet-layout) .bottom-nav>button.selected{background:transparent;color:var(--accent)}
+.app-shell:not(.tablet-layout) .bottom-nav>button.selected>span{background:var(--accent-soft)}
+.app-shell:not(.tablet-layout) .bottom-nav>button>strong{font-size:10px;font-weight:500;line-height:1.2}
+.app-shell:not(.tablet-layout) .bottom-nav>button.selected>strong{font-weight:650}
+.app-shell .bottom-nav>button:before{display:none}
+.tablet-layout .bottom-nav{border:0;background:var(--bg);gap:12px;padding:16px 8px}
+.tablet-layout .bottom-nav>button{border-radius:16px;min-height:60px}
+.app-shell.tablet-layout .app-header{height:70px;padding:12px 24px}
+.app-shell.tablet-layout{grid-template-rows:70px auto minmax(0,1fr)}
+.tablet-layout .header-search{max-width:620px}.tablet-layout .app-header>.icon-button{margin-left:auto}
+@media(min-width:900px){.tablet-layout .course-grid,.tablet-layout .recording-course-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.tablet-layout .course-card h2,.tablet-layout .recording-course-card>strong{font-size:15px}}
+@media(max-width:350px){.app-shell .app-content{padding-inline:14px}.app-shell .course-grid,.app-shell .recording-course-grid{gap:8px}.app-shell .course-grid .item-shell>.course-card,.app-shell .recording-course-card{padding:12px 10px}.app-shell .course-card h2,.app-shell .recording-course-card>strong{font-size:13px}.app-shell:not(.tablet-layout) .bottom-nav{margin-inline:8px}}
+@media(prefers-reduced-motion:reduce){.header-search,.app-shell .bottom-nav>button>span{transition:none}}

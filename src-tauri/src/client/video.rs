@@ -29,6 +29,7 @@ use crate::{
 use base64::{engine::general_purpose::STANDARD, Engine};
 use chrono::{Local, TimeZone};
 use md5::{Digest, Md5};
+#[cfg(not(any(target_os="android",target_os="ios")))]
 use printpdf::*;
 use regex::Regex;
 use reqwest::{
@@ -1436,6 +1437,7 @@ impl Client {
     }
 
     /// Downloads PPT images and converts them to a PDF document
+    #[cfg(not(any(target_os="android",target_os="ios")))]
     pub async fn download_ppt_pdf<F: Fn(ProgressPayload) + Send + 'static>(
         self: Arc<Self>,
         ppts: &[CanvasVideoPPT],

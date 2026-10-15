@@ -1,0 +1,62 @@
+/* Motion is brief, functional and disabled by the system reduced-motion preference. */
+:root { --motion-fast: 150ms; --motion-page: 240ms; --ease-out: cubic-bezier(.2,.7,.2,1); }
+.app-content { animation: page-appear var(--motion-page) var(--ease-out) both; }
+.app-content:focus { outline: none; }
+.assignment-list > .item-shell, .course-grid > .item-shell, .download-card { animation: item-appear 280ms var(--ease-out) both; }
+.assignment-list > :nth-child(2), .course-grid > :nth-child(2) { animation-delay: 30ms; }
+.assignment-list > :nth-child(3), .course-grid > :nth-child(3) { animation-delay: 55ms; }
+.assignment-list > :nth-child(4), .course-grid > :nth-child(4) { animation-delay: 80ms; }
+.assignment-list > :nth-child(n+5), .course-grid > :nth-child(n+5) { animation-delay: 100ms; }
+.modal-overlay { animation: page-appear 160ms ease both; }
+.modal { animation: sheet-appear 220ms var(--ease-out) both; overscroll-behavior: contain; }
+.toast { animation: toast-appear 200ms var(--ease-out) both; max-width: calc(100vw - 28px); }
+.button, .icon-button, .assignment-card, .course-card, .bottom-nav > button, .deadline-chips > button, .appearance-picker > button { transition: background-color var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast), color var(--motion-fast); -webkit-tap-highlight-color: transparent; }
+button:active:not(:disabled) { filter: brightness(.96); }
+.button:active:not(:disabled), .icon-button:active:not(:disabled), .course-card:active, .assignment-card:active { transform: scale(.985); }
+.bottom-nav > button:active { transform: scale(.94); }
+.progress-ring, .download-progress > i { transition: background 350ms ease, width 350ms ease; }
+button:disabled { cursor: not-allowed; opacity: .48; }
+:focus-visible { outline: 2px solid #a92d3d; outline-offset: 3px; }
+.skip-link { position: fixed; top: -70px; left: 16px; z-index: 1000; background: #a92d3d; color: white; padding: 12px 18px; border-radius: 8px; }
+.skip-link:focus { top: 12px; }
+.deadline-tools { margin: 12px 0 18px; }
+.deadline-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.deadline-chips > button { padding: 7px 9px; border: 1px solid #e2e6da; border-radius: 8px; color: #758468; font-size: 10px; min-height: 34px; }
+.deadline-chips > button.selected { background: #f7eced; border-color: #dfbfc5; color: #9e2c3e; font-weight: 600; }
+.compact-search.search-field { margin-block: 10px; min-height: 42px; }
+.calendar-export { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+.calendar-export > span { font-size: 10px; color: #7c8b70; }
+.calendar-export button { min-height: 34px; }
+.toast .undo-button { display: flex; align-items: center; gap: 4px; color: #f6dca6; font-size: 12px; flex-shrink: 0; padding: 9px 5px; }
+.toast > span { overflow-wrap: anywhere; }
+.course-card-top > span { display: flex; align-items: center; gap: 5px; }
+.no-flex-gap .term-filter > svg, .no-flex-gap .term-filter > span,
+.no-flex-gap .button > svg, .no-flex-gap .text-button > svg,
+.no-flex-gap .assignment-bottom > span > svg, .no-flex-gap .overview-footer > span > svg,
+.no-flex-gap .calendar-export > span, .no-flex-gap .course-card-top > span > svg { margin-right: 6px; }
+.no-flex-gap .deadline-chips > button { margin: 0 6px 6px 0; }
+.no-flex-gap .connection-banner > svg, .no-flex-gap .toast > svg { margin-right: 8px; }
+.no-flex-gap .overview-footer > span > b { margin-inline: 3px; }
+.connection-banner { display: flex; align-items: center; gap: 8px; background: #fff5dd; color: #80632f; padding: 10px 20px; font-size: 11px; line-height: 1.7; }
+.tablet-layout > .connection-banner { grid-column: 2; grid-row: 2; z-index: 2; }
+.recovery-page { min-height: 100dvh; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px; text-align: center; padding: 30px; background: #fafaf7; color: #61714e; }
+.recovery-page h1 { font-size: 22px; }
+.recovery-page p { line-height: 1.8; max-width: 380px; }
+@media (hover:hover) and (pointer:fine) {
+  .assignment-card:hover, .course-card:hover { transform: translateY(-2px); box-shadow: 0 8px 22px #243b2310; }
+  .button:hover:not(:disabled) { transform: translateY(-1px); }
+}
+@media (max-width:599px) {
+  .modal { animation-name: mobile-sheet-appear; }
+  .item-menu, .icon-button { min-width: 40px; min-height: 40px; }
+  .native-download-actions > button { min-width: 38px; min-height: 40px; }
+}
+@keyframes page-appear { from { opacity: .15; } to { opacity: 1; } }
+@keyframes item-appear { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes sheet-appear { from { opacity: 0; transform: scale(.98); } to { opacity: 1; transform: scale(1); } }
+@keyframes mobile-sheet-appear { from { opacity: .6; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes toast-appear { from { opacity: 0; margin-bottom: -6px; } to { opacity: 1; margin-bottom: 0; } }
+@media (prefers-reduced-motion:reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  button:active, .assignment-card:hover, .course-card:hover, .button:hover { transform: none !important; }
+}

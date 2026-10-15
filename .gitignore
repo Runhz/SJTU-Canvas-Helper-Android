@@ -23,3 +23,27 @@ dist-ssr
 *.sln
 *.sw?
 opencode.json
+
+# Android local build output and signing material
+src-tauri/gen/android-upstream-template/
+*.jks
+*.keystore
+keystore.properties
+artifacts/
+
+tools/ai-core-tests/target/
+
+# Private local diagnostics and generated Android caches
+src-tauri/gen/android/.kotlin/
+src-tauri/gen/android/app/src/main/jniLibs/
+src-tauri/gen/android/app/tauri.properties
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+*service-account*.json
+*.hprof
+*.heapdump
+local-diagnostics/

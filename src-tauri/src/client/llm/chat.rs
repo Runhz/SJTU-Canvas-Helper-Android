@@ -117,9 +117,23 @@ impl LlmRuntime {
             return Ok(None);
         }
 
-        let client = openai::CompletionsClient::builder()
+        let builder = openai::CompletionsClient::builder()
             .api_key(&config.api_key)
-            .base_url(&config.base_url)
+            .base_url(&config.base_url);
+        // The default Android platform verifier needs a separate JVM integration.
+        // Use Mozilla trust anchors with full hostname/certificate verification instead.
+        #[cfg(target_os="android")]
+        let builder={
+            let roots=rustls_mobile::RootCertStore::from_iter(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+            let tls=rustls_mobile::ClientConfig::builder_with_provider(std::sync::Arc::new(rustls_mobile::crypto::aws_lc_rs::default_provider()))
+                .with_safe_default_protocol_versions().map_err(|e|AppError::LLMError(e.to_string()))?
+                .with_root_certificates(roots).with_no_client_auth();
+            let http=reqwest_llm::Client::builder().tls_backend_preconfigured(tls)
+                .connect_timeout(std::time::Duration::from_secs(20)).timeout(std::time::Duration::from_secs(180))
+                .build().map_err(|e|AppError::LLMError(e.to_string()))?;
+            builder.http_client(http)
+        };
+        let client=builder
             .build()
             .map_err(|error| AppError::LLMError(error.to_string()))?;
         Ok(Some(LlmSnapshot {

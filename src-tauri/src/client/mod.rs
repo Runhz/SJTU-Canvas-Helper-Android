@@ -5,6 +5,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 pub mod ai;
+pub mod mobile_files;
 pub mod annual;
 pub mod basic;
 mod common;

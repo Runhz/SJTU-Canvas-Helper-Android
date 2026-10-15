@@ -1,0 +1,30 @@
+{
+  "productName": "Canvas 随行",
+  "version": "0.5.3",
+  "identifier": "com.canvas.sjtu.mobile",
+  "build": {
+    "beforeDevCommand": "npm --prefix demo run dev",
+    "beforeBuildCommand": "npm --prefix demo run build",
+    "frontendDist": "../demo/dist",
+    "devUrl": "http://127.0.0.1:4173"
+  },
+  "app": {
+    "security": {
+      "capabilities": [
+        "mobile"
+      ]
+    },
+    "windows": [
+      {
+        "label": "main",
+        "title": "Canvas 随行",
+        "width": 430,
+        "height": 880,
+        "zoomHotkeysEnabled": false
+      }
+    ]
+  },
+  "bundle": {
+    "createUpdaterArtifacts": false
+  }
+}

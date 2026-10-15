@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "mobile",
+  "description": "Local student-facing UI only. Remote login pages have no application IPC bridge.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

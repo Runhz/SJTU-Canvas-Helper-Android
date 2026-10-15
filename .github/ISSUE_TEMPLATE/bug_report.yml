@@ -1,0 +1,24 @@
+name: 问题反馈
+description: 提供可复现步骤，帮助修复问题（不要提供凭据或课程原文）
+body:
+  - type: markdown
+    attributes:
+      value: 请勿粘贴 Token、Cookie、API Key、完整请求地址或私人课件。截图请先遮挡个人信息。
+  - type: input
+    id: version
+    attributes:
+      label: 应用版本与设备
+      placeholder: 0.5.3 / Android 14 / 手机或平板型号
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤、期望结果与实际结果
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: 脱敏错误与补充说明
+      description: 只提供必要的错误信息；文件问题提供格式与大小即可。

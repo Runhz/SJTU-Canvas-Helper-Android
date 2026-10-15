@@ -1,0 +1,40 @@
+name: Build Android preview APK
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.14.0'
+          cache: npm
+          cache-dependency-path: demo/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - run: npm ci --prefix demo
+      - run: npm --prefix demo test
+      - name: Build development APK
+        run: |
+          export NDK_HOME="$ANDROID_HOME/ndk/28.2.13676358"
+          demo/node_modules/.bin/tauri android build --target aarch64 --apk --debug --config src-tauri/tauri.mobile.conf.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: canvas-suixing-arm64-preview
+          path: src-tauri/gen/android/app/build/outputs/apk/arm64/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
+  # Manual build only: no automatic release publication and no production signing key.

@@ -5,6 +5,11 @@ description = "SJTU Canvas Helper"
 authors = ["Okabe"]
 edition = "2021"
 
+[lib]
+name = "canvas_mobile"
+path = "src/mobile_lib.rs"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
@@ -15,7 +20,8 @@ tauri = { version = "2", features = ["devtools"] }
 num_cpus = "1.17"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-reqwest = { version = "0.11.24", features = [
+reqwest = { version = "0.11.24", default-features = false, features = [
+  "rustls-tls",
   "cookies",
   "multipart",
   "json",
@@ -36,7 +42,6 @@ chrono = "0.4.42"
 bytes = "1.9"
 bardecoder = "0.5.0"
 image = "0.24"
-printpdf = { version = "0.8.2", features = ["jpeg"] }
 async-trait = "0.1.88"
 pdf-extract = "0.10.0"
 docx-rs = "0.4.18"
@@ -46,7 +51,11 @@ tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 dirs = "5.0.1"
-tokio-util = { version = "0.7", features = ["io"] }
+tokio-util = { version = "0.7", features = ["io", "rt"] }
+zip = { version = "0.6.6", default-features = false, features = ["deflate"] }
+quick-xml = "0.37.5"
+encoding_rs = "0.8"
+cfb = "0.10"
 rust_xlsxwriter = "0.90.2"
 urlencoding = "2.1.3"
 rmcp = { version = "1.7", features = [
@@ -56,7 +65,7 @@ rmcp = { version = "1.7", features = [
   "transport-streamable-http-server-session",
 ] }
 axum = "0.8"
-rig = "0.38.2"
+rig = { package = "rig-core", version = "0.38.2" }
 [dependencies.uuid]
 version = "1.18.1"
 features = [
@@ -71,6 +80,16 @@ custom-protocol = ["tauri/custom-protocol"]
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
+printpdf = { version = "0.8.2", features = ["jpeg"] }
+
+# aws-lc 0.30 has no pregenerated x86_64 Android bindings; generate them for the emulator.
+[target.'cfg(all(target_os = "android", target_arch = "x86_64"))'.dependencies]
+aws-lc-sys = { version = "=0.30.0", features = ["bindgen"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+reqwest_llm = { package = "reqwest", version = "0.13.4", default-features = false, features = ["rustls", "json", "stream"] }
+rustls_mobile = { package = "rustls", version = "0.23", default-features = false, features = ["aws_lc_rs", "std", "tls12"] }
+webpki_roots = { package = "webpki-roots", version = "1" }
 
 [target.'cfg(any(target_os = "windows", target_os = "linux"))'.dev-dependencies]
 injectorpp = "0.4.0"

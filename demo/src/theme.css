@@ -1,0 +1,84 @@
+/* Neutral surfaces: Radix Slate. Indigo marks interaction; status colors stay semantic.
+   Loaded after layout styles to prevent legacy component colors from leaking. */
+:root {
+ color-scheme:light; --bg:#f9f9fb; --surface:#f9f9fb; --card:#fff;
+ --surface-soft:#f0f0f3; --surface-hover:#e8e8ec; --line:#e8e8ec; --border-control:#cdced6;
+ --text:#1c2024; --ink:#1c2024; --muted:#60646c; --subtle:#717580;
+ --accent:#3a5bc7; --accent-dark:#3358d4; --accent-solid:#3e63dd;
+ --accent-soft:#edf2fe; --accent-line:#c1d0ff; --on-accent:#fff;
+ --blue:#3a5bc7; --green:#267552; --amber:#946000; --danger:#c12e42;
+ --success-soft:#e9f6ee; --warning-soft:#fff6df; --danger-soft:#fff0f1;
+ --warning-line:#eddbac; --danger-line:#f1c9ce; --shadow-card:0 2px 8px #1c202404;
+ --overlay:#10121866; --brand-bg:#1c2024; --brand-ink:#fff;
+ background:var(--bg); color:var(--text);
+}
+:root[data-theme=dark] {
+ color-scheme:dark; --bg:#111113; --surface:#111113; --card:#18191b;
+ --surface-soft:#212225; --surface-hover:#272a2d; --line:#2e3135; --border-control:#43484e;
+ --text:#edeef0; --ink:#edeef0; --muted:#b0b4ba; --subtle:#969ba4;
+ --accent:#9eb1ff; --accent-dark:#5472e4; --accent-solid:#3e63dd;
+ --accent-soft:#1c2541; --accent-line:#354573; --blue:#9eb1ff;
+ --green:#79d1a2; --amber:#ebc16b; --danger:#ff9ba8;
+ --success-soft:#192e24; --warning-soft:#2c2518; --danger-soft:#301e23;
+ --warning-line:#50412a; --danger-line:#563039; --shadow-card:none;
+ --overlay:#0009; --brand-bg:#edeef0; --brand-ink:#1c2024;
+}
+body,.demo-stage,.app-shell,.app-content,.learning-player,.recovery-page{background:var(--bg);color:var(--text)}
+.app-shell{border-color:var(--card);box-shadow:0 20px 65px -30px #00000026}
+.app-header,.bottom-nav,.home-indicator,.status-bar,.modal{background:var(--card);color:var(--text);border-color:var(--line)}
+.app-header,.bottom-nav{box-shadow:none}
+.app-brand strong,.app-brand strong>span,h1,h2,h3,.course-card h2,.settings-group strong,.profile-card h2,.file-info>strong,.auth-step strong,.search-results strong,.slide-snippet h3,.chapter-list button.current>strong{color:var(--text)}
+.brand-icon{background:var(--brand-bg);color:var(--brand-ink)}.brand-icon i{background:#90a8ff}
+.app-header button,.bottom-nav button,.icon-button,.text-button,.back-link,.course-filter,.native-download-actions>button,.download-footer>button{color:var(--muted)}
+.icon-button:hover,.item-menu,.assignment-list .item-menu{background:var(--surface-soft);color:var(--muted)}
+:root .bottom-nav>button.selected,:root[data-theme=dark] .bottom-nav>button.selected,.tablet-layout .bottom-nav>button.selected{background:var(--accent-soft);color:var(--accent)}
+.bottom-nav>button.selected:before{display:none}.bottom-nav>button>span>i,.notification-dot,.live-dot,.tiny-live{background:var(--accent-solid)}
+.demo-ribbon,.live-ribbon{background:var(--surface-soft);color:var(--muted);border-color:var(--line)}
+.demo-ribbon .ribbon-right,.live-ribbon>button{color:var(--muted)}
+.preview-controls{background:var(--card);border-color:var(--line);box-shadow:none}.preview-controls>span,.preview-controls>button{color:var(--muted)}.preview-controls>button.selected{background:var(--text);color:var(--card)}
+.term-filter,.search-field,.segmented,.appearance-picker{background:var(--surface-soft);border-color:var(--line);color:var(--muted)}
+.search-field input,.ai-input>input,.ai-compose textarea{color:var(--text);background:transparent}
+input::placeholder,textarea::placeholder,.search-field input::placeholder,.ai-input>input::placeholder{color:var(--subtle);opacity:1}
+.search-field button,.segmented>button,.appearance-picker button{color:var(--muted)}
+.segmented>button.selected,.appearance-picker button.selected{background:var(--card);color:var(--text);box-shadow:0 1px 3px #0000000a}
+.local-filters button,.deadline-chips>button,.reminder-options>button,.angle-switch>button{border-color:var(--line);color:var(--muted);background:transparent}
+.local-filters button.selected,.deadline-chips>button.selected,.reminder-options>button.selected,.angle-switch>button.selected,.choice-options button.selected{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-line)}
+.button.primary,.ai-compose>button,.ai-input>button,.skip-link{background:var(--accent-solid);color:var(--on-accent)}
+.button.secondary{background:var(--card);color:var(--text);border-color:var(--border-control)}.button.primary:hover:not(:disabled){background:var(--accent-dark)}
+.overview-card,:root[data-theme=dark] .overview-card,.assignment-card,.download-card,.continue-card,.settings-group,.profile-card,.attachment-row,.receipt,.model-test-result,.file-list,.recording-feature,.download-stats,.calendar-strip,.reminder-message,.ai-compose,.ai-input,.chat-message.assistant,.ai-answer,.model-card{background:var(--card);color:var(--text);border-color:var(--line);box-shadow:var(--shadow-card)}
+.course-grid .item-shell,.recording-course-card,.assistant-entry,.schedule-panel,.water-quality-setting{border-color:var(--line);box-shadow:var(--shadow-card)}
+.overview-top,.overview-main p,.overview-footer,.overview-footer button{color:var(--muted);opacity:1}.overview-top button{color:var(--muted)}.overview-number,.overview-number-label{color:var(--text)}.overview-divider{background:var(--line)}.overview-main p{margin-top:8px}
+.course-card-top>.course-code,.course-card p,.course-card-bottom,.recording-course-card>span,.course-grid .item-menu{color:var(--muted);opacity:1}.course-card-bottom>span:last-child{color:var(--accent)}
+.course-glyph,.course-glyph.blue,.course-glyph.sand,.course-glyph.green,.course-glyph.purple,.setting-icon,.setting-icon.blue,.setting-icon.amber,.setting-icon.green,.setting-icon.purple,.file-icon,.file-icon.zip,.file-icon.docx,.file-icon.pptx,.file-icon.ipynb,.download-file,.avatar{background:var(--surface-soft);color:var(--muted)}
+.course-label,.course-label.sand,.course-label.green,.course-label.purple{color:var(--muted)}.course-label:before{background:var(--border-control)}
+.course-detail-hero,.course-detail-hero.sand,.course-detail-hero.green,.course-detail-hero.purple,.classroom-ai-card,.tablet-summary-note,.reminder-hero,.native-player-poster,.empty,.notice,.upload-zone,.suggestions>button,.ai-welcome>span,.login-illustration,.login-step>span{background:var(--surface-soft);color:var(--text);border-color:var(--line)}
+.classroom-ai-card strong,.classroom-ai-card span,.reminder-hero h3,.reminder-hero p,.native-player-poster>h2,.empty h3{color:var(--text)}
+.notice.amber,.notice.warning,.connection-banner{background:var(--warning-soft);color:var(--amber);border-color:var(--warning-line)}
+.overdue-notice,.assignment-card.overdue-card{background:var(--danger-soft);border-color:var(--danger-line);color:var(--danger)}.overdue-notice small{color:var(--danger)}.notice-icon{border-color:currentColor}
+.pill.gray,.count-label,.section-heading>h2>span,.campus-label{background:var(--surface-soft);color:var(--muted)}.pill.blue{background:var(--accent-soft);color:var(--accent)}
+.pill.green,.submission-success>span{background:var(--success-soft);color:var(--green)}.pill.red{background:var(--danger-soft);color:var(--danger)}.pill.amber,.message-icon{background:var(--warning-soft);color:var(--amber)}
+.danger{color:var(--danger)!important}.warning{color:var(--amber)!important}.success{color:var(--green)!important}
+.subtle,.paragraph,.eyebrow,.form-caption,.file-info>span,.settings-group small,.ai-footnote,.model-hint,.timeline-sort,.assignment-bottom,.sync-caption,.card-arrow,.soft-note,.soft-note small,.continue-card small,.continue-card span,.continue-card>svg,.course-detail-hero>p,.course-detail-hero>span,.underlined-tabs>button,.syllabus p,.syllabus-row>span,.recording-meta p,.recording-meta>small,.recording-course div>span,.recording-course>svg,.video-title p,.chapter-list button>span,.chapter-list button>small,.slide-snippet div>p,.download-stats span,.download-card-main div>span,.download-footer,.profile-card p,.settings-group button>svg,.privacy-note,.privacy-note small,.calendar-strip>button,.modal-header p,.assignment-detail-heading>div,.detail-section>p,.upload-zone span,.attachment-row small,.submission-success>p,.receipt>span,.receipt strong,.toggle-row small,.reminder-message p,.reminder-message small,.reminder-message>svg,.search-results>button,.search-results small,.login-step p,.ai-welcome>p,.native-form>label,.native-select,.calendar-export>span,.auth-step,.qr-state,.local-filters small,.action-sheet>p,.term-empty,.ai-context-bar,.file-loading,.tablet-summary-note,.tablet-summary-note>h3{color:var(--muted)}
+.course-card-bottom,.file-row,.toggle-row,.underlined-tabs,.auth-service-list,.auth-service-list>div,.setting-group,.settings-group>button,.syllabus-row,.recording-course,.chapter-list button,.download-stats>div,.download-footer,.assignment-detail-heading,.search-results>button,.tablet-layout .learning-materials,.tablet-layout .bottom-nav{border-color:var(--line)}
+.native-form input,.native-form select,.native-select select,.native-form .choice-trigger{background:var(--card);color:var(--text);border-color:var(--border-control)}
+.underlined-tabs>button.selected{color:var(--accent);border-color:var(--accent)}
+.auth-step>span,.chat-message.user,.chapter-list button.current{background:var(--accent-soft);color:var(--text)}.play-round,.recording-play{background:var(--card);color:var(--text)}
+.video-actions>button:first-child{background:var(--card);color:var(--text);border-color:var(--line)}
+.subtitle-line>p{color:var(--text)}.subtitle-line{border-color:transparent}.subtitle-row.current{background:var(--accent-soft)}.subtitle-check[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent)}
+.rich-answer pre,.rich-answer code{background:var(--surface-soft);border-color:var(--line)}.rich-answer pre code{background:transparent}.rich-answer blockquote{color:var(--muted);border-color:var(--border-control)}.rich-answer th,.rich-answer td{border-color:var(--border-control)}
+.download-progress,.watched-bar,.toggle{background:var(--surface-hover)}.download-progress>i,.watched-bar>i{background:var(--accent-solid)}
+.calendar-strip>button.selected{background:var(--accent-solid);color:var(--on-accent)}.reminder-message.read{background:var(--surface-soft)}
+.modal-overlay{background:var(--overlay)}.sheet-handle{background:var(--border-control)}.toast{background:#202124f5;color:#f9f9fb;border-color:#ffffff20}.toast>svg,.toast>button{color:#c8d3ff}
+.modal-header .icon-button{background:var(--surface-soft);color:var(--muted)}
+.app-content{scrollbar-color:var(--border-control) transparent}.refresh-button{color:var(--muted);border-color:var(--line)}
+.water-tank-count strong span,.water-tank-count>small,.water-quality-options small,.water-setting-heading p,.water-setting-footnote,.subtitle-context-note,.model-capability-hint p,.assistant-entry p,.schedule-event time,.schedule-event p,.schedule-event small,.schedule-empty{color:var(--muted);opacity:1}
+.water-setting-heading>svg{color:var(--accent)}.water-quality-options button.selected{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
+:focus-visible{outline-color:var(--accent)}
+.intro-brand{color:var(--text)}.intro-description,.intro-kicker,.intro-features,.intro-features svg,.demo-guide>p,.small-label,.intro-footer,.device-caption{color:var(--muted)}.demo-guide{border-color:var(--line)}
+@media(hover:hover) and (pointer:fine){.assignment-card:hover,.course-card:hover{box-shadow:0 5px 18px #00000008}}
+/* Demo lecture artwork is a slide, independent of the surrounding app theme. */
+.player{background:#17191f}.player-art,.slide-art,.teacher-view,.slide-snippet>div{background:#eef1f7}
+.player-art>h2,.slide-art h2{color:#33435e}.slide-topline,.slide-art em,.slide-page,.slide-bullet,.slide-bullet>span,.slide-formula,.teacher-placeholder{color:#66758d}
+.player-controls,.player-controls button,.player-controls select{color:#f3f4f6}.player-controls>input{accent-color:#9eb1ff}.player-controls i{color:#a3abba}.player-controls option{color:#1c2024}
+.mini-teacher{background:#ccd4e2;color:#52627c;border-color:#edf0f6}.player-demo{background:#ffffff99;color:#52627c}
+.network-diagram span{border-color:#a9b5c9}.network-diagram i{background:#a9b5c9}.inline-player p{color:#bac2d1}

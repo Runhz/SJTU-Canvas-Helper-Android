@@ -1,0 +1,14 @@
+name: 功能建议
+description: 描述你想改善的学习场景
+body:
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 使用场景与遇到的问题
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望的体验
+      description: 可说明手机、平板、离线等条件。

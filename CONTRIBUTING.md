@@ -1,70 +1,37 @@
-# 贡献指南
+# 参与贡献
 
-感谢您对 SJTU Canvas Helper 的兴趣！以下是一些参与开发的指引。
+欢迎围绕实际学习场景改进手机和平板体验。当前维护对象是 Android 预览版；根目录 `src/` 和旧依赖属于保留的桌面源码，不是移动界面入口。
 
-## 开发环境
+请从本 fork 的 `android` 分支开始，并向该分支提交 PR。桌面版问题请到[原项目](https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper)反馈；适合共享的接口修复先拆成独立改动，再与上游讨论。
 
-请先参考 [README.md](./README.md#开发指南) 完成 Rust 和 Node.js 环境安装。
+## 开始修改
 
-## 本地开发
+1. 阅读 [README](README.md)、[构建指南](docs/BUILDING.md) 与 [验收表](docs/ACCEPTANCE.md)。
+2. 从 `demo/` 启动预览，用示例数据复现；真实账号凭据保存在仓库外。
+3. 每个 PR 聚焦一个问题，附操作前后的行为与验证结果。涉及 UI 时提供手机、平板、夜间模式截图，使用示例数据。
+4. 保留现有账号数据与兼容性。学期、忽略、课程置顶等设置应绑定账号；不要将 URI 当作普通路径，不要将凭据放在任务或日志中。
 
-```shell
-# 安装依赖
-yarn install
+## 验证
 
-# 启动 Tauri 开发模式
-yarn tauri dev
-
-# 或者通过 make
-make dev
+```sh
+npm ci --prefix demo
+npm --prefix demo test
+npm --prefix demo run build
+npm --prefix demo run test:encoding
+node tools/check-public-source.mjs
+cargo test --locked --manifest-path tools/ai-core-tests/Cargo.toml
 ```
 
-## 代码规范
+UI 检查至少覆盖 360／393 像素手机宽度、600／768／1280 像素平板宽度、横竖屏和减少动态效果。交互要有明确的加载、空白和错误状态；图标按钮提供可读名称，弹窗支持键盘和返回入口。Android 10 的 WebView 是兼容基线，新增浏览器 API 必须检查支持情况。
 
-### 前端
+新增有业务含义的逻辑需要测试。真实上传只能使用本人授权的测试作业／目录，不能在普通课程中反复提交。模拟测试通过只证明对应环节；未运行的真机检查写“待验证”。
 
-项目使用 TypeScript 严格模式，并配置了 ESLint：
+## 文本与版本
 
-```shell
-# 检查代码
-yarn lint
+源码和中文文档使用 UTF-8 无 BOM。Windows 用 PowerShell 7，读取时显式指定 UTF-8，写入后严格回读并解析配置。不要提交自动格式化造成的大面积无关差异。
 
-# 自动修复
-yarn lint:fix
+移动版本位于 `demo/package.json` 与 `src-tauri/tauri.mobile.conf.json`，同时更新 npm lockfile。保留上游版权、来源及许可。签名密钥、SDK、缓存、真实数据和构建产物不进入源码。
 
-# 类型检查
-yarn typecheck
-```
+## 报告问题
 
-### 后端 (Rust)
-
-```shell
-# 使用 make
-make lint
-make test
-
-# 或直接
-cd src-tauri && cargo clippy --workspace --all-targets --all-features
-cd src-tauri && cargo test
-```
-
-## 提交代码
-
-项目使用 [Husky](https://typicode.github.io/husky/) + [lint-staged](https://github.com/lint-staged/lint-staged) 在提交前自动检查并修复暂存代码。
-
-**Commit Message 格式**：请保持简洁，使用英文或中文均可。
-
-## 版本升级
-
-```shell
-make version <new_version>
-# 例如：make version 3.1.0
-```
-
-这会自动更新 `package.json`、`Cargo.toml`、`tauri.conf.json`、`website/` 中的版本号。
-
-## Pull Request
-
-1. 确保代码通过 lint 和类型检查
-2. 如果涉及新功能，请尽量补充说明
-3. PR 将自动触发 CI 运行 Rust 测试和 lint
+请提供应用版本、Android 版本、手机／平板型号、复现步骤和脱敏错误。文件问题优先提供扩展名、大小及是否有可复制文字。不要上传私人课件原文，安全问题走 [安全说明](SECURITY.md) 中的渠道。

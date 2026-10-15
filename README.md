@@ -1,173 +1,74 @@
 <div align="center">
-  <img src="images/logo.png" width="300px"/>
-  <h1>SJTU Canvas Helper</h1>
-  <p><b>还在为下载学生上传的大量压缩包而苦恼吗？</b></p>
+  <img src="demo/public/app-icon.svg" width="92" alt="Canvas 随行图标" />
+  <h1>Canvas 随行</h1>
+  <p>课程、作业与课堂资料</p>
+  <p>面向上海交通大学本部的 Android 学习助手 · 手机与平板</p>
+  <p><strong>0.5.3 预览 · Android 10+ · ARM64 · MIT</strong></p>
 </div>
 
-SJTU Canvas 小帮手基于 [Tauri](https://tauri.app/) 开发，助您更便捷地使用交大 Canvas。
-参与讨论：[水源社区](https://shuiyuan.sjtu.edu.cn/t/topic/245275)，[官网](https://okabe-rintarou-0.github.io/SJTU-Canvas-Helper/)。
+Canvas 随行将作业截止日期、课程资料、课堂录播和 AI 问答放在同一个学习空间。基于 [SJTU-Canvas-Helper](https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper) 3.0.13 移植，采用 Tauri 2、React、Rust 与 Kotlin。非学校官方客户端，仅支持本部 `oc.sjtu.edu.cn`。
 
+这是由 [hzr666ABC](https://github.com/hzr666ABC) 独立维护的 **Android 手机／平板移植 fork**，与上游作者无隶属关系。Windows／桌面版请使用[原项目](https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper)；安卓问题请在[本 fork](https://github.com/hzr666ABC/SJTU-Canvas-Helper-Android/issues)反馈。安卓开发与版本号在 `android` 分支独立演进，保留上游版权、MIT 许可及源码历史。
 
-<div align="center">
-  <img align="center" src="https://img.shields.io/badge/rust-1.75-blue" alt="">
-  <img align="center" src="https://img.shields.io/github/stars/Okabe-Rintarou-0/SJTU-Canvas-Helper" /> 
-  <img align="center" src="https://img.shields.io/github/v/release/Okabe-Rintarou-0/SJTU-Canvas-Helper?include_prereleases" /> 
-  <img align="center" src="https://img.shields.io/github/downloads/Okabe-Rintarou-0/SJTU-Canvas-Helper/total" />
-</div>
+**当前为预览版本。** 核心界面和接口已接入，真实账号、长时间后台任务和全设备验收仍未全部完成。支持范围与待完成项目以 [验收表](docs/ACCEPTANCE.md) 为准，不应将演示交互当作真实服务器结果。
 
-## 安装指南
+## 看看界面
 
-| 操作系统类型 | 推荐下载（点击直接下载最新版） | 说明 |
-| :--- | :--- | :--- |
-| 🪟 **Windows 64 位** | [SJTU.Canvas.Helper_3.0.13_x64_en-US.msi](https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper/releases/download/app-v3.0.13/SJTU.Canvas.Helper_3.0.13_x64_en-US.msi) | 首选，支持自动更新 |
-| 🪟 **Windows 32 位** | [SJTU.Canvas.Helper_3.0.13_x86_en-US.msi](https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper/releases/download/app-v3.0.13/SJTU.Canvas.Helper_3.0.13_x86_en-US.msi) | 仅限老旧 32 位电脑 |
-| 🍎 **macOS Apple Silicon** | [SJTU.Canvas.Helper_3.0.13_aarch64.dmg](https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper/releases/download/app-v3.0.13/SJTU.Canvas.Helper_3.0.13_aarch64.dmg) | M 系列芯片 |
-| 🍎 **macOS Intel** | [SJTU.Canvas.Helper_x64.app.tar.gz](https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper/releases/download/app-v3.0.13/SJTU.Canvas.Helper_x64.app.tar.gz) | Intel 芯片 |
-| 🐧 **Linux Debian/Ubuntu** | [SJTU.Canvas.Helper_3.0.13_amd64.deb](https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper/releases/download/app-v3.0.13/SJTU.Canvas.Helper_3.0.13_amd64.deb) | `dpkg` 安装 |
-| 🐧 **Linux RedHat/Fedora** | [SJTU.Canvas.Helper-3.0.13-1.x86_64.rpm](https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper/releases/download/app-v3.0.13/SJTU.Canvas.Helper-3.0.13-1.x86_64.rpm) | `rpm` 安装 |
-| 🐧 **Linux 通用** | [SJTU.Canvas.Helper_3.0.13_amd64.AppImage](https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper/releases/download/app-v3.0.13/SJTU.Canvas.Helper_3.0.13_amd64.AppImage) | 赋予权限后直接运行 |
+| 手机 · 学习总览 | 平板 · 课程空间 |
+| --- | --- |
+| ![手机作业总览](docs/screenshots/mobile-phone-0.5.2.jpg) | ![平板课程空间](docs/screenshots/mobile-tablet-0.5.2.jpg) |
 
-1. 前往 [Release](https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper/releases) 页面下载并安装一次即可，后续主版本更新将自动拉取，无需重复下载
+截图为 0.5.2 示例数据界面。中性底色与蓝色强调，支持日间、夜间和跟随系统；手机底部导航，平板侧边导航与分栏。过渡动画遵从系统“减少动态效果”偏好。最新修复与验证边界见 [0.5.3 记录](docs/RELEASE_0.5.3.md)。
 
-2. **Windows 系统**：
-   - 推荐下载 `.msi` 安装包，支持自动更新功能
-   - 也可选择免安装便携版：`SJTU.Canvas.Helper_3.0.13_x64_portable.zip`
+## 能做什么
 
-3. **MacOS 系统**：
-   - 下载对应版本安装包 
-   - 或打开终端（terminal）运行 `bash script/install_mac.sh` 自动下载安装（自动识别 Intel / Apple Silicon 芯片）
-   - 若遇到打不开的问题，可参考 [在 Mac 上安全地打开 App](https://support.apple.com/zh-cn/102445)
-   - 若显示已损坏，尝试执行以下命令：
-     ```shell
-     cd /Applications 
-     sudo xattr -r -d com.apple.quarantine /Applications/SJTU\ Canvas\ Helper.app
-     ```
+- **水缸效果**：作业完成比例对应水量，采用 FLIP 自由液面模拟，支持倒置、惯性流动、撞壁、液滴分离与回落。三档均为连续液体，按模拟精细度和帧率区分；透明玻璃使用 WebGL 2，不支持时使用同一模拟的 Canvas 渲染。默认高清，设置中可切换。
+- **近期日程**：展示 Canvas 实际返回的未来七天事件，可开启提前提醒；是否包含上课安排取决于学校录入的数据。
 
-4. **Arch Linux 系统**：
-   通过 [yay](https://github.com/Jguer/yay) 从 AUR 安装：
-   ```bash
-   yay -S sjtu-canvas-helper
-   ```
+- **作业控制面板**：截止时间排序、提交状态、倒计时、学期筛选、今日／七天／逾期筛选、搜索、忽略与撤销、日历快照导出。
+- **课程资料**：账号隔离的目录缓存与按需刷新、课程置顶、文件搜索、后台下载，以及外部打开、分享和导出。
+- **课堂学习**：圆角内嵌／全屏播放器、倍速和机位切换，字幕跟随与选择、字幕下载、课件切片、截图提问和课堂总结。
+- **AI 助手**：跨课程查询与按需读课件，模型能力发现、自动上下文适配、流式回答、Markdown 与 LaTeX、PPT/PPTX 等文字提取。
+- **账号与提醒**：本部 Token、官方登录与二维码入口、本机加密保存，基于最近同步结果安排未提交作业提醒。
 
-### 首次配置
+学校服务与系统权限会影响可用性；双机位取决于设备解码能力。图片型课件没有可提取文字时会明确提示，首版不内置 OCR 模型。
 
-安装完成后，请前往设置页面填写您的 `Canvas Token` 以及文件下载保存目录。
+不包含成绩、讨论、人员名单、助教操作、文档内嵌预览、PDF 生成／合并、Office 转换、视频合成和 MCP。云盘完整上传界面、多套命名模型配置及公开更新源仍在计划中。
 
-![](./images/settings.png)
+## 先体验
 
-## 致谢
-
-感谢以下用户为本仓库做出的贡献：
-
-<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
-<table>
-  <tbody>
-    <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/xeonliu"><img src="https://avatars.githubusercontent.com/u/62530004?v=4?s=100" width="100px;" alt="xeonliu"/><br /><sub><b>xeonliu</b></sub></a><br /><a href="https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper/commits?author=xeonliu" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/creeper12356"><img src="https://avatars.githubusercontent.com/u/138413915?v=4?s=100" width="100px;" alt="creeper12356"/><br /><sub><b>creeper12356</b></sub></a><br /><a href="https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper/commits?author=creeper12356" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/pangbo13"><img src="https://avatars.githubusercontent.com/u/51732678?v=4?s=100" width="100px;" alt="PangBo"/><br /><sub><b>PangBo</b></sub></a><br /><a href="https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper/commits?author=pangbo13" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/wytili"><img src="https://avatars.githubusercontent.com/u/61528682?v=4?s=100" width="100px;" alt="Yiting Wang"/><br /><sub><b>Yiting Wang</b></sub></a><br /><a href="https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper/commits?author=wytili" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="http://blog.a-stable.com"><img src="https://avatars.githubusercontent.com/u/66514911?v=4?s=100" width="100px;" alt="Yuxuan Sun"/><br /><sub><b>Yuxuan Sun</b></sub></a><br /><a href="https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper/commits?author=definfo" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/yingyx"><img src="https://avatars.githubusercontent.com/u/191231288?v=4?s=100" width="100px;" alt="Yuxuan Ying"/><br /><sub><b>Yuxuan Ying</b></sub></a><br /><a href="https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper/commits?author=yingyx" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://young-lord.github.io"><img src="https://avatars.githubusercontent.com/u/51789698?v=4?s=100" width="100px;" alt="LY"/><br /><sub><b>LY</b></sub></a><br /><a href="https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper/commits?author=young-lord" title="Code">💻</a></td>
-    </tr>
-  </tbody>
-</table>
-
-<!-- markdownlint-restore -->
-<!-- prettier-ignore-end -->
-
-<!-- ALL-CONTRIBUTORS-LIST:END -->
-
-## Main Features
-+ [x] 文件下载 / 预览(免下载) / PDF & PPTX 混合合并(免下载)
-+ [x] 一键上传[交大云盘（新）](https://pan.sjtu.edu.cn/)
-+ [x] DDL 日历 
-+ [x] 人员名单导出
-+ [x] 查看/提交作业
-+ [x] 批改作业/修改作业 DDL
-+ [x] 支持密院和本部 canvas 系统
-+ [x] 视频下载/播放/字幕下载/截图抓取合成PDF
-+ [x] 多 API Key 管理：支持添加多个 LLM 服务商 Key，自动识别提供商并拉取可用模型列表
-+ [x] MCP Server：将 Canvas 数据能力通过标准 MCP 协议开放给 AI 客户端
-+ [x] 自动更新 
-
-### 文件下载/预览
-
-采用类似 macOS Quick Look 的预览体验：
-- 按下空格打开预览
-- 再次按下空格关闭预览
-
-https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper/assets/58595459/7f05cabc-7bf9-4f58-91ea-f3efed151733
-
-**支持预览主流压缩文件（7z, zip, rar...）**
-
-![](./images/file.png)
-
-#### 支持的文件预览格式
-
-| 文件类型 | 格式                                                 | 支持状态 |
-| -------- | ---------------------------------------------------- | -------- |
-| 文档     | PDF                                                  | ✅        |
-| 文档     | DOCX                                                 | ✅        |
-| 文档     | Markdown                                             | ✅        |
-| 表格     | XLSX                                                 | ✅        |
-| 代码     | 多种编程语言代码（见说明）                           | ✅        |
-| 图片     | PNG, JPG, JPEG, BMP, GIF, TIFF, SVG, ICO, WEBP, AVIF | ✅        |
-| 笔记本   | IPYNB (Jupyter Notebook)                             | ✅        |
-| 压缩包   | ZIP, RAR, 7Z 等主流格式                              | ✅        |
-
-**代码文件支持说明：** 支持多种编程语言代码预览，包括但不限于：C/C++, Java, Python, JavaScript, TypeScript, Go, Rust, PHP, Ruby, Swift, Kotlin 等。详细支持列表请参考 [highlight.js 支持的语言](https://github.com/highlightjs/highlight.js/blob/main/SUPPORTED_LANGUAGES.md)。
-
-### 文件一键上传交大云盘
-
-![](./images/jbox.png)
-
-### 课程录屏播放/下载
-
-![](./images/video.png)
-
-### 查看课程作业
-
-![](./images/assignment.png)
-
-### 学生提交作业查看/批改/修改 DDL
-  
-输入合法的分数，然后按下回车；如果想撤回分数，则清空输入框，再次按下回车。
-
-![](./images/submission.png)
-
-## 开发指南
-
-![](images/arch.png)
-
-配合 AI 理解项目框架：https://deepwiki.com/Okabe-Rintarou-0/SJTU-Canvas-Helper
-
-### 开发环境搭建
-
-1. 安装 [Rust](https://www.rust-lang.org/tools/install) 开发环境
-   - Rust 快速学习资源：[Rust语言圣经(Rust Course)](https://course.rs/about-book.html)
-
-2. 安装 [NodeJS](https://nodejs.org/en/download/current)
-   - 安装后将自动包含 `npm` 和 `yarn` 包管理器
-
-### 启动项目
-
-```shell
-yarn tauri dev
-
-# 如果支持 make
-make dev
+```sh
+npm ci --prefix demo
+npm --prefix demo run dev
 ```
 
-### 调试说明
+需要 Node 24。打开终端显示的本地地址，即可体验手机／平板原型。**网页预览是示例数据，不需要填写真实凭据。** APK 才包含学校服务连接和原生能力。
 
-Tauri 基于 WebView 构建，可按以下方式打开开发者工具：
-- **MacOS**: 按下 `⌘ + ⌥ + i` 打开控制台
-- **Windows**: 按下 `Ctrl + Shift + i` 打开控制台
+开发预览 APK 可由维护者提供，或在本仓库 GitHub Actions 中手动运行 **Build Android preview APK** 获取。请核实产物架构、签名与版本。Android 10 以下不支持；不同构建环境的开发签名可能无法覆盖安装。
 
-## Star History
+## 开发与贡献
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Okabe-Rintarou-0/SJTU-Canvas-Helper&type=Date)](https://star-history.com/#Okabe-Rintarou-0/SJTU-Canvas-Helper&Date)
+```sh
+npm --prefix demo test
+npm --prefix demo run build
+npm --prefix demo run test:encoding
+node tools/check-public-source.mjs
+```
+
+| 目录 | 职责 |
+| --- | --- |
+| `demo/src` | Android 响应式界面与浏览器演示，含前端测试 |
+| `src-tauri/src/mobile*.rs` | 本部课程、文件、提交与 AI 的移动端接口 |
+| `src-tauri/gen/android` | Kotlin 登录、系统文件与下载、播放器、提醒 |
+| `tools/ai-core-tests` | 直接引用生产解析器、上下文及流式传输的 Rust 测试 |
+| `docs/upstream` | 原桌面版说明和归档工作流 |
+
+Android 构建详见 [构建指南](docs/BUILDING.md)，参与修改请读 [贡献指南](CONTRIBUTING.md)。
+
+用户资料留在本机和相应服务之间；使用 AI 会将所选资料文字发送给你配置的模型服务。参见 [隐私说明](PRIVACY.md)。请勿在 Issue 中提供 Token、Cookie、模型 Key 或私人课程内容，安全问题见 [SECURITY.md](SECURITY.md)。
+
+## 路线与发布
+
+下一步重点是完成真实设备／学校服务验收、补齐云盘上传与多模型配置、验证公开签名升级。进度见 [验收表](docs/ACCEPTANCE.md)，版本变化见 [CHANGELOG.md](CHANGELOG.md)，开源导出与发布过程见 [发布说明](docs/RELEASING.md)。
+
+感谢上游作者与贡献者。原版权及 MIT 许可完整保留于 [LICENSE](LICENSE)，基线与第三方许可边界见 [UPSTREAM.md](UPSTREAM.md)。

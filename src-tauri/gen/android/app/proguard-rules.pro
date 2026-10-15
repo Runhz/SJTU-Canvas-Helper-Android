@@ -1,0 +1,2 @@
+-keep class com.canvas.sjtu.mobile.** { *; }
+-keep class app.tauri.** { *; }

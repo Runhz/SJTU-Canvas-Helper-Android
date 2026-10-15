@@ -1,0 +1,37 @@
+/* Keep old Android 10 WebViews usable; newer engines use the dvh declarations. */
+.modal-overlay{top:0;right:0;bottom:0;left:0}.modal{max-height:88vh}
+.auth-step{display:flex;align-items:center;gap:12px;margin:25px 0 17px;color:#8e9b7b}.auth-step>span{display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:#f8edef;color:#ac2c40;font-size:13px;flex-shrink:0}.auth-step>div{flex:1}.auth-step strong{display:block;font-size:14px;color:#52634b}.auth-step small{display:block;font-size:10px;line-height:1.9;margin-top:4px}.auth-service-list{border:1px solid #e4e8da;border-radius:12px;padding:5px 15px;margin-bottom:18px}.auth-service-list>div{display:flex;justify-content:space-between;font-size:11px;padding:11px 0;border-bottom:1px solid #f0f1e9}.auth-service-list>div:last-child{border:0}.auth-service-list strong{font-weight:500}.qr-art{display:grid;place-items:center;min-height:280px;background:white;border:1px solid #e6e8de;border-radius:20px;margin:15px auto;max-width:300px}.qr-art canvas{width:256px;max-width:100%;height:auto}.qr-state{display:flex;align-items:center;justify-content:center;gap:6px;text-align:center;font-size:11px;color:#899d72;line-height:1.9;margin:16px 0}.qr-login>.button-row{justify-content:space-between;margin:16px 0}.qr-login>.paragraph{line-height:2}
+.native-runtime { min-height: 100vh; }
+.native-runtime .app-shell { display: flex; flex-direction: column; height: 100vh; min-height: 0; }
+.native-runtime .app-header, .native-runtime .live-ribbon { flex: none; position: static; }
+.native-runtime .app-content { flex: 1; min-height: 0; overflow: auto; }
+.native-runtime .bottom-nav { flex: none; position: static; }
+.native-runtime .tablet-layout.app-shell { display: grid; height: 100vh; }
+.tablet-layout .bottom-nav { min-height: 0; overflow-y: auto; }
+.term-filter{display:flex;align-items:center;gap:9px;background:#f3f3eb;border:1px solid #e6e7da;border-radius:13px;padding:11px 13px;margin:3px 0 20px;color:#6c795e;font-size:12px}.term-filter>span{flex:none}.term-filter select{min-width:0;width:100%;border:0;background:transparent;color:#43513e;font:inherit;outline-offset:4px}.local-filters{display:flex;align-items:center;gap:8px;margin:12px 0 14px;flex-wrap:wrap}.local-filters button{background:transparent;color:#87917d;border:1px solid #e6e8dc;border-radius:9px;padding:7px 10px;font-size:11px}.local-filters button.selected{background:#f6e9eb;border-color:#e8c8ce;color:#ab2d41}.local-filters small{font-size:10px;color:#9da38f;margin-left:auto}.item-shell{position:relative;min-width:0}.item-shell>.assignment-card,.item-shell>.course-card{width:100%;height:100%}.item-menu{position:absolute;right:10px;top:47px;width:31px;height:27px;border:0;background:#f5f5ed;color:#7b876e;border-radius:8px;display:grid;place-items:center}.course-grid .item-menu{top:14px;right:12px}.item-shell .assignment-card h3{padding-right:33px}.item-shell .course-card-top>span:last-child{margin-right:34px}.action-sheet>p{font-size:12px;color:#8c967d;line-height:1.8}.action-sheet>.button{margin:15px 0}.inline-player{position:relative;aspect-ratio:16/11;min-height:225px;border-radius:15px;overflow:hidden;background:#1e261e;color:#e9eddf;display:grid;place-items:center;text-align:center}.inline-player h2{font-size:15px;font-weight:500;margin:13px}.inline-player p{font-size:10px;color:#a6b199;margin:14px}.inline-player+.text-button{margin:11px 0}.classroom-ai-card{display:flex;gap:12px;align-items:center;width:100%;background:linear-gradient(130deg,#f1ede3,#f7f4eb);border:1px solid #e3ddca;border-radius:16px;padding:18px;text-align:left;color:#7e6650;margin:18px 0}.classroom-ai-card>div{flex:1}.classroom-ai-card strong{display:block;font-size:13px;color:#59644d}.classroom-ai-card span{display:block;font-size:10px;margin-top:7px;line-height:1.8}.classroom-ai-card:disabled{opacity:.6}.subtitle-downloads{margin:20px 0 15px;flex-wrap:wrap}.subtitle-downloads .button{font-size:11px;flex:1;padding:11px 8px;white-space:nowrap}.chat-message{border-radius:13px;padding:15px;margin:14px 0;background:#f4f4eb;color:#536049;line-height:1.9;font-size:12px}.chat-message.user{background:#f7ebed;margin-left:28px;color:#774650}.chat-message small{font-size:10px;opacity:.7}.chat-message p{margin:5px 0 0}.term-empty{font-size:12px;color:#8a947c;line-height:1.8;margin:15px 0}
+
+/* Narrow tablets and split-screen windows keep the rail and stack their content. */
+@media (min-width: 600px) and (max-width: 767px) {
+  .tablet-layout.app-shell { grid-template-columns: 68px minmax(0, 1fr); }
+  .tablet-layout .app-content { padding: 24px 20px; }
+  .tablet-layout .dashboard-layout,
+  .tablet-layout .learning-layout { grid-template-columns: minmax(0, 1fr); gap: 26px; }
+  .tablet-layout .dashboard-summary,
+  .tablet-layout .learning-player { position: static; }
+  .tablet-layout .tablet-summary-note { display: none; }
+  .tablet-layout .learning-materials { border-left: 0; padding-left: 0; }
+  .tablet-layout .course-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-height: 600px) {
+  .native-runtime .tablet-layout .bottom-nav { gap: 3px; padding-block: 8px; }
+  .native-runtime .tablet-layout .bottom-nav > button { min-height: 46px; gap: 4px; }
+  .native-runtime .tablet-layout .bottom-nav > button.selected::before { top: 13px; }
+}
+
+@supports (height: 100dvh) {
+  .modal { max-height: 88dvh; }
+  .native-runtime { min-height: 100dvh; }
+  .native-runtime .app-shell { min-height: 0; height: 100dvh; }
+  .native-runtime .tablet-layout.app-shell { min-height: 0; height: 100dvh; }
+}

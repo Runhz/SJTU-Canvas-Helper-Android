@@ -1,0 +1,42 @@
+{
+  "name": "sjtu-canvas-android-demo",
+  "version": "0.5.3",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 4173 --strictPort",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "test:encoding": "node tools/check-encoding.mjs"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.12.4",
+    "katex": "0.19.0",
+    "lucide-react": "0.468.0",
+    "qrcode.react": "4.2.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-markdown": "10.1.0",
+    "rehype-katex": "7.0.1",
+    "remark-gfm": "4.0.1",
+    "remark-math": "6.0.0",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.3",
+    "@testing-library/dom": "10.4.0",
+    "@testing-library/react": "16.3.0",
+    "@testing-library/user-event": "14.6.1",
+    "@types/react": "18.3.23",
+    "@types/react-dom": "18.3.7",
+    "@types/three": "0.186.0",
+    "@vitejs/plugin-react": "4.5.0",
+    "jsdom": "26.1.0",
+    "typescript": "5.8.3",
+    "vite": "6.4.4",
+    "vitest": "4.1.11"
+  },
+  "overrides": {
+    "katex": "$katex"
+  }
+}
