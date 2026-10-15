@@ -20,7 +20,7 @@ export function candidateFiles() {
 }
 export function publicFiles() {
   const rootFiles=new Set(['README.md','CONTRIBUTING.md','SECURITY.md','PRIVACY.md','UPSTREAM.md','THIRD_PARTY_NOTICES.md','CHANGELOG.md','LICENSE','.gitignore','.gitattributes','.editorconfig','package.json','yarn.lock','index.html','vite.config.ts','vitest.config.ts','tsconfig.json','tsconfig.node.json','eslint.config.js']);
-  const docs=new Set(['BUILDING.md','RELEASING.md','ACCEPTANCE.md','RELEASE_0.4.0.md','RELEASE_0.5.0.md','PLAN_0.5.0.md','PLAN_0.5.1.md','RELEASE_0.5.1.md','PLAN_0.5.2.md','RELEASE_0.5.2.md','RELEASE_0.5.3.md','PLAN_WATER_FLUID.md','WATER_FLUID.md']);
+  const docs=new Set(['BUILDING.md','RELEASING.md','ACCEPTANCE.md','RELEASE_0.4.0.md','RELEASE_0.5.0.md','PLAN_0.5.0.md','PLAN_0.5.1.md','RELEASE_0.5.1.md','PLAN_0.5.2.md','RELEASE_0.5.2.md','RELEASE_0.5.3.md','RELEASE_0.5.4.md','PLAN_WATER_FLUID.md','WATER_FLUID.md']);
   const tools=new Set(['android-ui-probe.cjs','build-mobile.ps1','build-android.ps1','public-source.mjs','public-source.test.mjs','check-public-source.mjs','export-open-source.mjs']);
   return candidateFiles().filter(p=> {
     if (rootFiles.has(p)) return true;
@@ -30,6 +30,7 @@ export function publicFiles() {
     if (p.startsWith('src-tauri/')) return !/\/(target|build|\.gradle|\.kotlin|jniLibs|\.tauri)\//.test(p) && !/(?:local|keystore|tauri)\.properties$/.test(p);
     if (/^docs\/screenshots\/(mobile-(phone|courses|recordings|tablet)|water-(pixel|soft))-0\.5\.1\.jpg$/.test(p)) return true;
     if (/^docs\/screenshots\/mobile-(phone|tablet)-0\.5\.2\.jpg$/.test(p)) return true;
+    if (/^docs\/screenshots\/chat-history-(phone|pad)-0\.5\.4\.png$/.test(p)) return true;
     if (/^docs\/screenshots\/water-fluid-(phone|splash|pad|splash-pad-night)\.jpg$/.test(p)) return true;
     if (/^docs\/screenshots\/water-(continuous-(demo|full)|standalone-demo)\.jpg$/.test(p)) return true;
     if (p.startsWith('docs/')) return docs.has(p.slice(5)) || p.startsWith('docs/upstream/') || /^docs\/screenshots\/open-source-(phone|tablet|night)-0\.[45]\.0\.(?:png|jpg)$/.test(p) || p === 'docs/screenshots/android10-0.4.0-empty.png' || /^docs\/screenshots\/(water-quality-(phone|tablet)|courses-phone|semester-sheet|android10-(phone|tablet))-0\.5\.0\.(png|jpg)$/.test(p);

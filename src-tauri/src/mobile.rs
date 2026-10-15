@@ -313,7 +313,7 @@ pub async fn ai_chat(app:AppHandle,state:State<'_,MobileState>,mode:String,args:
     let cancel=tokio_util::sync::CancellationToken::new();if let Some(old)=state.ai.lock().await.insert(request_id.clone(),cancel.clone()){old.cancel()}
     let mut emit=|s|{let _=on_chunk.send(s);};let mut phase=|s|{let _=on_phase.send(s);};
     let task=async{
-        let mut conversation=messages.iter().rev().take(14).collect::<Vec<_>>();conversation.reverse();
+        let mut conversation=messages.iter().collect::<Vec<_>>();
         let capabilities=resolve_capabilities(&state,&config.model_url,&config.model_key,&config.model_name).await;
         let history_budget=capabilities.context_tokens.unwrap_or(32000)/4;
         while conversation.len()>1&&conversation.iter().map(|m|m.content.chars().count()).sum::<usize>()>history_budget{conversation.remove(0);}

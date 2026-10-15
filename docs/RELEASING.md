@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-0.5.3 是当前 Android 开源预览版本。界面测试、模拟服务测试和成功打包各自证明不同环节，不能代替真机与真实账号验收。未验证部分见 [ACCEPTANCE.md](ACCEPTANCE.md)。
+0.5.4 是当前 Android 开源预览版本。界面测试、模拟服务测试和成功打包各自证明不同环节，不能代替真机与真实账号验收。未验证部分见 [ACCEPTANCE.md](ACCEPTANCE.md)。
 
 ## 上传 GitHub 之前
 
@@ -23,4 +23,4 @@
 5. 用维护者的私钥签名，核实包名、versionCode、最低 SDK、签名和 APK SHA-256。
 6. Release 附 APK、校验值、变更记录和已知限制；不要附私钥或包含账号数据的日志。
 
-参考 [GitHub Actions 工作流说明](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)。本仓库仍需在目标 GitHub 仓库实际运行 Actions 才能确认云端通过。
+参考 [GitHub Actions 工作流说明](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)。本 fork 已在 0.5.3 提交验证过 Windows／Linux 前端与 Rust 核心云端检查；每个新提交仍以对应 Actions 实际结果为准。手动云端 APK 构建与本机 APK 构建分别记录，不互相替代。

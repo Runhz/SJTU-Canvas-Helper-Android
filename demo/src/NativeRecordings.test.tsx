@@ -6,6 +6,7 @@ import {NativeRecordings} from './NativePanels';
 import type {Course} from './domain';
 const course:Course={id:'1',name:'测试课程',code:'TEST',teacher:'',color:'blue',glyph:'network',files:[]};
 const recording:runtime.Recording={id:'201',title:'测试课堂',courseId:'1',source:'canvas',materialsId:501,raw:{}};
+beforeEach(()=>localStorage.clear());
 beforeEach(()=>{vi.clearAllMocks();vi.mocked(runtime.native).mockResolvedValue({});vi.mocked(runtime.recordingTracks).mockResolvedValue([{url:'https://example.test/video.mp4',headers:{}}]);vi.mocked(runtime.materialText).mockResolvedValue({lines:[{bg:1000,ed:4000,res:'课堂原始字幕'}],slides:[],text:'课堂原始字幕'});vi.stubGlobal('requestAnimationFrame',(f:()=>void)=>setTimeout(f,0));vi.stubGlobal('cancelAnimationFrame',clearTimeout);});
 afterEach(()=>{cleanup();vi.unstubAllGlobals()});
 async function setup(){

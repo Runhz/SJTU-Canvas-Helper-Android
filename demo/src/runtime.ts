@@ -107,7 +107,7 @@ export interface ChatMessage {role:'user'|'assistant';content:string}
 export async function ai(mode:string,args:Record<string,unknown>,question:string,onText:(text:string)=>void,history:ChatMessage[]=[],options:{requestId?:string;onPhase?:(s:string)=>void}={}){
   const channel=new Channel<string>();channel.onmessage=onText;
   const phases=new Channel<string>();phases.onmessage=s=>options.onPhase?.(s);
-  return invoke<string>('ai_chat',{mode,args,messages:[...history.slice(-12),{role:'user',content:question}],onChunk:channel,onPhase:phases,requestId:options.requestId||null});
+  return invoke<string>('ai_chat',{mode,args,messages:[...history,{role:'user',content:question}],onChunk:channel,onPhase:phases,requestId:options.requestId||null});
 }
 export const cancelAi=(requestId:string)=>invoke('cancel_ai',{requestId});
 export const modelList=(url:string,key:string)=>invoke<string[]>('list_models',{url,key});

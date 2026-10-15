@@ -21,12 +21,12 @@ import {Modal} from './Modal';
 import {ConnectionBanner, DeadlineTools} from './Experience';
 import {assignmentCalendar, matchesAssignment, matchesDeadline, orderCourses, type DeadlineWindow} from './productivity';
 import {Pin, Undo2} from 'lucide-react';
+import {accountScope,defaultPage,decodePage,pageField,useRememberedState,usePageScroll,type Tab} from './pageMemory';
 
 // Explicit paths avoid missing SVG rect strokes in the Android 10 tablet WebView.
 const OverviewIcon = createLucideIcon('Overview', [['path', {d:'M4 3H9Q10 3 10 4V11Q10 12 9 12H4Q3 12 3 11V4Q3 3 4 3Z M15 3H20Q21 3 21 4V7Q21 8 20 8H15Q14 8 14 7V4Q14 3 15 3Z M15 12H20Q21 12 21 13V20Q21 21 20 21H15Q14 21 14 20V13Q14 12 15 12Z M4 16H9Q10 16 10 17V20Q10 21 9 21H4Q3 21 3 20V17Q3 16 4 16Z',key:'overview'}]]);
 const NATIVE = runtime.NATIVE;
 
-type Tab = 'dashboard' | 'courses' | 'recordings' | 'downloads' | 'profile' | 'assistant';
 type Dialog = 'reminders' | 'notifications' | 'search' | 'about' | 'models' | 'login' | null;
 interface DemoState { version: 1; assignments: Assignment[]; downloads: DownloadTask[]; reminders: Reminder[]; settings: ReminderSettings; seen: string[]; syncedAt: number;study?:StudyPreferences }
 const KEY = 'sjtu-canvas-demo-v1';
@@ -52,31 +52,39 @@ function Empty({icon = <CheckCheck size={28}/>, title, text}: {icon?: ReactNode;
   return <div className="empty">{icon}<h3>{title}</h3><p>{text}</p></div>;
 }
 export default function App() {
-  const appearance=useTheme();
-  const [demoState, setDemoState] = useState<DemoState>(loadState);
   const live = useLiveCanvas();
+  const scope = NATIVE ? accountScope(live.account) : 'demo';
+  return <LearningApp key={scope} live={live} scope={scope}/>;
+}
+function LearningApp({live,scope}:{live:ReturnType<typeof useLiveCanvas>;scope:string}) {
+  const appearance=useTheme();
+  const [page,setPage]=useRememberedState(`canvas-page-v1:${scope}`,defaultPage,decodePage);
+  const field=<K extends keyof typeof page>(key:K)=>pageField(page,setPage,key);
+  const [demoState, setDemoState] = useState<DemoState>(loadState);
   const state = NATIVE ? live.state : demoState;
   const setState = NATIVE ? live.setState : setDemoState;
   const demoTerm = academicTerm(Date.now());
   const allCourses = NATIVE ? live.courses : demoCourses.map(c=>({...c,term:{id:'demo-'+demoTerm.season+'-'+demoTerm.year,name:demoTerm.year+'-'+(demoTerm.year+1)+' '+demoTerm.season}}));
   const [now, setNow] = useState(Date.now());
-  const [tab, setTab] = useState<Tab>('dashboard');
+  const [tab, setTab] = field('tab');
+  const [visitedRecordings,setVisitedRecordings]=useState(tab==='recordings');
   const [previewSize,setPreviewSize] = useState<'phone'|'tablet'>('phone');
   const [screenWidth,setScreenWidth] = useState(window.innerWidth);
   useEffect(()=>{const changed=()=>setScreenWidth(window.innerWidth);window.addEventListener('resize',changed);return()=>window.removeEventListener('resize',changed);},[]);
   const tablet = NATIVE ? screenWidth>=600 : previewSize==='tablet'&&screenWidth>=600;
   const [dialog, setDialog] = useState<Dialog>(null);
   const [detail, setDetail] = useState<string | null>(null);
-  const [courseId, setCourseId] = useState<string | null>(null);
-  const [courseSection, setCourseSection] = useState('files');
-  const [filter, setFilter] = useState('pending');
+  const [courseId, setCourseId] = field('courseId');
+  const [courseSection, setCourseSection] = field('courseSection');
+  const [filter, setFilter] = field('filter');
   const [itemActions,setItemActions]=useState<{kind:'assignment'|'course';id:string}|null>(null);
-  const [showHiddenCourses,setShowHiddenCourses]=useState(false);
-  const [courseFilter, setCourseFilter] = useState('all');
+  const [showHiddenCourses,setShowHiddenCourses]=field('showHiddenCourses');
+  const [courseFilter, setCourseFilter] = field('courseFilter');
+  const [courseQuery,setCourseQuery]=field('courseQuery');
   const [query, setQuery] = useState('');
-  const [assignmentQuery, setAssignmentQuery] = useState('');
-  const [deadlineWindow, setDeadlineWindow] = useState<DeadlineWindow>('all');
-  const [fileQuery, setFileQuery] = useState('');
+  const [assignmentQuery, setAssignmentQuery] = field('assignmentQuery');
+  const [deadlineWindow, setDeadlineWindow] = field('deadlineWindow');
+  const [fileQuery, setFileQuery] = field('fileQuery');
   const [undo, setUndo] = useState<null | { run: () => void }>(null);
   const [toast, setToast] = useState('');
   const [syncing, setSyncing] = useState(false);
@@ -84,18 +92,20 @@ export default function App() {
   const [submitting, setSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState(false);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
-  const [video, setVideo] = useState<string | null>(null);
+  const [video, setVideo] = field('video');
   const [videoPlaying, setVideoPlaying] = useState(false);
-  const [videoTime, setVideoTime] = useState(754);
-  const [speed, setSpeed] = useState('1.0');
-  const [angle, setAngle] = useState('slide');
-  const [videoSection, setVideoSection] = useState('chapters');
-  const [subtitleQuery, setSubtitleQuery] = useState('');
+  const [videoTime, setVideoTime] = field('videoTime');
+  const [speed, setSpeed] = field('speed');
+  const [angle, setAngle] = field('angle');
+  const [videoSection, setVideoSection] = field('videoSection');
+  const [subtitleQuery, setSubtitleQuery] = field('subtitleQuery');
   const [aiOpen, setAiOpen] = useState(false);
+  const [aiVisited,setAiVisited]=useState(false);
   const [aiContext, setAiContext] = useState('');
   const [aiPayload,setAiPayload] = useState<{mode:string;args:Record<string,unknown>}>({mode:'agent',args:{}});
-  const [showCalendar, setShowCalendar] = useState(false);
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [showCalendar, setShowCalendar] = field('showCalendar');
+  const [selectedDay, setSelectedDay] = field('selectedDay');
+  const mainRef=usePageScroll(scope,`${tab}:${tab==='courses'?courseId||'list':tab==='recordings'?video||'native':'root'}`);
   const [storageOk, setStorageOk] = useState(true);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>();
   const syncTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -124,8 +134,6 @@ export default function App() {
   }
   function notify(message: string, preserveUndo = false) { if (!preserveUndo) setUndo(null); setToast(message); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(''), 7000); }
   useEffect(() => { if (!undo) return; const id = setTimeout(() => setUndo(null), 6500); return () => clearTimeout(id); }, [undo]);
-  useEffect(() => { setUndo(null); setAssignmentQuery(''); setDeadlineWindow('all'); }, [live.account?.accountId]);
-  useEffect(() => { setFileQuery(''); }, [courseId]);
   useEffect(() => {
     const id = setInterval(() => { setNow(Date.now()); if (!document.hidden) setVideoTime(t => videoPlaying ? Math.min(3012, t + Number(speed)) : t); }, 1000);
     return () => clearInterval(id);
@@ -162,7 +170,7 @@ export default function App() {
   const assignment = state.assignments.find(a => a.id === detail);
   const selectedCourse = assignment && allCourses.find(c => c.id === assignment.courseId)!;
   const courseById = (id: string) => allCourses.find(c => c.id === id) || {...demoCourses[0],id,name:'已归档课程',files:[]};
-  useEffect(()=>{if(NATIVE&&activeCourse){void live.files(activeCourse).catch(e=>notify(String(e)));}},[courseId]);
+  useEffect(()=>{if(NATIVE&&activeCourse){void live.files(activeCourse).catch(e=>notify(String(e)));}},[courseId,!!activeCourse]);
   const stateFilteredAssignments = sortAssignments((filter==='ignored'?scopedAssignments.filter(a=>prefs.ignoredAssignments.includes(a.id)&&!prefs.hiddenAssignments.includes(a.id)):filter==='hidden'?scopedAssignments.filter(a=>prefs.hiddenAssignments.includes(a.id)):assignments).filter(a => (['all','ignored','hidden'].includes(filter) || (filter === 'pending' ? a.submission === 'unsubmitted' : a.submission === 'submitted'||a.submission === 'late')) && (courseFilter === 'all' || a.courseId === courseFilter) && (!showCalendar || !selectedDay || formatDate(a.dueAt, false) === selectedDay)));
   const visibleAssignments = stateFilteredAssignments.filter(a => matchesDeadline(a, deadlineWindow, now) && matchesAssignment(a, allCourses, assignmentQuery));
   const exportable = assignmentCalendar(visibleAssignments, allCourses, now, !NATIVE);
@@ -178,7 +186,7 @@ export default function App() {
   const today = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Taipei', month: 'long', day: 'numeric', weekday: 'long' }).format(now);
   const dayOptions = Array.from({ length: 7 }, (_, i) => now + i * 86400_000);
   const navItems: { id: Tab; name: string; icon: typeof BookOpen }[] = [{ id: 'dashboard', name: '总览', icon: OverviewIcon }, { id: 'courses', name: '课程', icon: BookOpen }, { id: 'recordings', name: '录播', icon: Video }, { id: 'assistant', name: '助手', icon: Sparkles }, { id: 'downloads', name: '下载', icon: Download }, { id: 'profile', name: '我的', icon: UserRound }];
-  function navigate(target: Tab) { setTab(target); setCourseId(null); setVideo(null); setVideoPlaying(false); setQuery(''); window.scrollTo({top: 0}); }
+  function navigate(target: Tab) { if(target==='recordings')setVisitedRecordings(true);setTab(target);setVideoPlaying(false); }
   function openAssignment(id: string) { setDetail(id); setFiles([]); setSubmitResult(false); setConfirmSubmit(false); }
   function sync() { if(NATIVE){if(!live.account){setDialog('login');return;}void live.refresh(true);return;}if (syncing) return; setSyncing(true); syncTimer.current = setTimeout(() => { setState(s => ({...s, syncedAt: Date.now()})); setSyncing(false); notify('示例数据已刷新 · 未连接真实 Canvas'); }, 650); }
   function enqueue(file: Pick<CourseFile, 'id' | 'name'>, cid: string) {
@@ -210,11 +218,11 @@ export default function App() {
       setSubmitting(false); setSubmitResult(true); setConfirmSubmit(false); notify('演示提交完成，控制面板已同步更新');
     }, 1100);
   }
-  function openAi(context:string,payload?:{mode:string;args:Record<string,unknown>}){const file=activeCourse?.files.find(f=>f.name===context);setAiPayload(payload||(file?.raw?{mode:'file',args:{file:file.raw}}:{mode:'agent',args:{}}));setAiContext(context);setAiOpen(true);}
-  function seekAiReference(href:string){
-    const params=new URLSearchParams(href.slice(1));const seconds=Number(params.get('t'));const resource=params.get('video');const points=aiPayload.args.timePoints;
-    if(!Number.isFinite(seconds)||seconds<0||resource!==aiPayload.args.resourceId||!Array.isArray(points)||!points.includes(seconds)){notify('该引用没有可核对的课堂时间点');return;}
-    setAiOpen(false);void runtime.native('playerControl',{action:'seek',positionMs:seconds*1000,resourceId:resource}).catch(e=>notify(String(e)));
+  function openAi(context:string,payload?:{mode:string;args:Record<string,unknown>}){const file=activeCourse?.files.find(f=>f.name===context);setAiPayload(payload||(file?.raw?{mode:'file',args:{file:file.raw}}:{mode:'agent',args:{}}));setAiContext(context);setAiVisited(true);setAiOpen(true);}
+  function seekAiReference(href:string,currentPayload=aiPayload){
+    const params=new URLSearchParams(href.slice(1));const seconds=Number(params.get('t'));const resource=params.get('video');const points=currentPayload.args.timePoints;
+    if(!Number.isFinite(seconds)||seconds<0||resource!==currentPayload.args.resourceId||!Array.isArray(points)||!points.includes(seconds)){notify('该引用没有可核对的课堂时间点');return;}
+    void runtime.native<{opened:boolean;resourceId:string}>('playerStatus').then(async status=>{if(!status.opened||status.resourceId!==resource){notify('请先打开对应课堂，再跳转时间点');return;}setAiOpen(false);navigate('recordings');await runtime.native('playerControl',{action:'seek',positionMs:seconds*1000,resourceId:resource});}).catch(e=>notify(String(e)));
   }
   function assignmentCard(a: Assignment) {
     const course = courseById(a.courseId), status = statusOf(a, now);
@@ -254,7 +262,7 @@ export default function App() {
         {!NATIVE&&<div className="demo-ribbon"><span/> 示例数据体验 <span className="ribbon-right">未连接真实 Canvas</span></div>}
         {NATIVE&&live.error&&<div className="notice amber" role="alert">{live.error}<button className="text-button" onClick={()=>setDialog('login')}>检查账号</button></div>}
         {!storageOk && <div role="alert" className="notice amber">浏览器无法保存数据，本次体验仅保留在当前页面。</div>}
-        <ConnectionBanner/><main className="app-content" id="main-content" tabIndex={-1} key={tab + (courseId || '')}>
+        <ConnectionBanner/><main className="app-content" id="main-content" tabIndex={-1} ref={mainRef}>
           {tab === 'dashboard' && <div className="dashboard-layout"><div className="dashboard-summary">
             <div className="page-heading"><div><p className="eyebrow">{today} · {new Date(now).getHours()<6?'凌晨':new Date(now).getHours()<12?'上午':new Date(now).getHours()<18?'下午':'晚间'}</p><h1>学习总览<span className="heading-dot">.</span></h1></div><button className={`refresh-button ${syncing ? 'syncing' : ''}`} onClick={sync} aria-label="刷新作业状态"><RefreshCw size={16}/></button></div>
             <TermFilter courses={allCourses} value={prefs.term} onChange={setTerm}/><div className="overview-card"><div className="overview-top"><span><span className="live-dot"/> 作业控制面板</span><button onClick={() => setDialog('reminders')} aria-label="设置截止提醒"><Settings2 size={17}/></button></div><div className="overview-main"><div><span className="overview-number">{pending.length}</span><span className="overview-number-label">份作业待完成</span><p>{NATIVE&&!live.account?'连接账号后显示真实作业状态':overdue.length ? `${overdue.length} 份已逾期，记得优先处理` : '暂无逾期作业'}</p></div><WaterTank completed={submitted} total={assignments.length}/></div><div className="overview-divider"/><div className="overview-footer"><span><Clock3 size={14}/><b>{urgent.length}</b> 份将在 24 小时内截止</span><button onClick={() => setDialog('reminders')}>提醒已{state.settings.enabled ? '开启' : '关闭'}<ChevronRight size={13}/></button></div></div>
@@ -270,10 +278,10 @@ export default function App() {
           </div></div>}
           {tab === 'courses' && !activeCourse && <>
             <div className="page-heading"><div><p className="eyebrow">{NATIVE?'当前学期':'示例课程'}</p><h1>我的课程<span className="heading-dot">.</span></h1></div><span className="count-label">{courses.length} 门</span></div><TermFilter courses={allCourses} value={prefs.term} onChange={setTerm}/><div className="local-filters"><button className={showHiddenCourses?'selected':''} onClick={()=>setShowHiddenCourses(!showHiddenCourses)}>{showHiddenCourses?'返回课程':'已移除课程'} {termCourses.filter(c=>prefs.hiddenCourses.includes(c.id)).length}</button></div>
-            <label className="search-field"><Search size={17}/><input placeholder="搜索课程名称或课程代码" aria-label="搜索课程" value={query} onChange={e=>setQuery(e.target.value)}/>{query && <button aria-label="清除搜索" onClick={()=>setQuery('')}><X size={16}/></button>}</label>
+            <label className="search-field"><Search size={17}/><input placeholder="搜索课程名称或课程代码" aria-label="搜索课程" value={courseQuery} onChange={e=>setCourseQuery(e.target.value)}/>{courseQuery && <button aria-label="清除搜索" onClick={()=>setCourseQuery('')}><X size={16}/></button>}</label>
             {!NATIVE&&<button className="continue-card" onClick={()=>{navigate('recordings');setVideo('net');}}><div className="play-round"><Play size={16} fill="currentColor"/></div><div><small>继续上次学习</small><strong>计算机网络 · 第 5 讲</strong><span>已看到 12:34 / 50:12</span></div><ChevronRight size={18}/></button>}
-            <div className="course-grid">{(showHiddenCourses?termCourses.filter(c=>prefs.hiddenCourses.includes(c.id)):courses).filter(c=>`${c.name}${c.code}`.toLowerCase().includes(query.toLowerCase())).map(c=><ItemShell key={c.id} label={c.name} onActions={()=>setItemActions({kind:'course',id:c.id})}><button className={`course-card ${c.color}`} onClick={()=>{setCourseId(c.id);setCourseSection('files');}}><div className="course-card-top"><Glyph course={c} size={28}/><span className="course-code">{prefs.pinnedCourses.includes(c.id)&&<Pin size={12} aria-label="已置顶"/>}{c.code}</span></div><h2>{c.name}</h2><p>{c.teacher}</p><div className="course-card-bottom"><span><FolderOpen size={12}/>{NATIVE&&!c.filesLoaded?"课程资料":`${c.files.length} 份资料`}</span><span>{pending.filter(a=>a.courseId===c.id).length} 项待办 <ArrowRight size={13}/></span></div></button></ItemShell>)}</div>
-            {!(showHiddenCourses?termCourses.filter(c=>prefs.hiddenCourses.includes(c.id)):courses).some(c=>`${c.name}${c.code}`.toLowerCase().includes(query.toLowerCase())) && <Empty icon={<Search size={28}/>} title="没有找到课程" text="试试课程名称或课程代码。"/>}
+            <div className="course-grid">{(showHiddenCourses?termCourses.filter(c=>prefs.hiddenCourses.includes(c.id)):courses).filter(c=>`${c.name}${c.code}`.toLowerCase().includes(courseQuery.toLowerCase())).map(c=><ItemShell key={c.id} label={c.name} onActions={()=>setItemActions({kind:'course',id:c.id})}><button className={`course-card ${c.color}`} onClick={()=>{setCourseId(c.id);setCourseSection('files');}}><div className="course-card-top"><Glyph course={c} size={28}/><span className="course-code">{prefs.pinnedCourses.includes(c.id)&&<Pin size={12} aria-label="已置顶"/>}{c.code}</span></div><h2>{c.name}</h2><p>{c.teacher}</p><div className="course-card-bottom"><span><FolderOpen size={12}/>{NATIVE&&!c.filesLoaded?"课程资料":`${c.files.length} 份资料`}</span><span>{pending.filter(a=>a.courseId===c.id).length} 项待办 <ArrowRight size={13}/></span></div></button></ItemShell>)}</div>
+            {!(showHiddenCourses?termCourses.filter(c=>prefs.hiddenCourses.includes(c.id)):courses).some(c=>`${c.name}${c.code}`.toLowerCase().includes(courseQuery.toLowerCase())) && <Empty icon={<Search size={28}/>} title="没有找到课程" text="试试课程名称或课程代码。"/>}
 
           </>}
           {tab === 'courses' && activeCourse && <>
@@ -285,7 +293,7 @@ export default function App() {
             {NATIVE&&courseSection==='syllabus'&&<NativeSyllabus course={activeCourse}/>}
             {!NATIVE&&courseSection === 'syllabus' && <article className="syllabus"><span className="pill gray">示例大纲</span><h2>课程介绍</h2><p>本课程通过理论学习与实验实践，帮助理解核心概念、建立知识体系，并培养独立分析与解决问题的能力。</p><h2>课程安排</h2>{['基础概念与问题导论','核心原理与案例分析','实验实践与课程总结'].map((s,i)=><div className="syllabus-row" key={s}><span>0{i+1}</span><div><strong>{s}</strong><p>第 {i*5+1} — {i*5+5} 周</p></div></div>)}<div className="notice">所有大纲内容均为演示示例。</div></article>}
           </>}
-          {NATIVE&&tab==='recordings'&&<NativeRecordings live={live} courses={courses} allCourses={allCourses} term={prefs.term} setTerm={setTerm} notify={notify} onAi={openAi} obscured={aiOpen||dialog!==null||itemActions!==null}/>}
+          {NATIVE&&visitedRecordings&&<div hidden={tab!=='recordings'}><NativeRecordings live={live} courses={courses} allCourses={allCourses} term={prefs.term} setTerm={setTerm} notify={notify} onAi={openAi} obscured={tab!=='recordings'||aiOpen||dialog!==null||itemActions!==null}/></div>}
           {!NATIVE && tab === 'recordings' && !video && <>
             <div className="page-heading"><div><p className="eyebrow">课程录播</p><h1>课堂录播<span className="heading-dot">.</span></h1></div><span className="count-label">资料库</span></div>
             <TermFilter courses={allCourses} value={prefs.term} onChange={setTerm}/>
@@ -312,7 +320,7 @@ export default function App() {
             <div className="section-heading"><h2>下载任务</h2>{!NATIVE&&<button className="text-button" onClick={()=>setState(s=>({...s,downloads:s.downloads.filter(d=>d.status==='running')}))}>清理记录</button>}</div>
             {NATIVE?<NativeDownloadList tasks={state.downloads} notify={notify}/>:state.downloads.length===0?<Empty icon={<FolderOpen size={30}/>} title="还没有下载任务" text="前往课程资料或录播页添加一项试试。"/>:[...state.downloads].reverse().map(d=><div className="download-card" key={d.id}><div className="download-card-main"><span className="download-file"><FileText size={23}/></span><div><strong>{d.name}</strong><span>{courseById(d.courseId).name}</span></div><span className={`pill ${d.status==='completed'?'green':d.status==='running'?'blue':'gray'}`}>{d.status==='completed'?'已完成':d.status==='cancelled'?'已取消':`${d.progress}%`}</span></div>{d.status==='running'?<><div className="download-progress"><i style={{width:`${d.progress}%`}}/></div><div className="download-footer"><span><LoaderCircle size={12} className="spin"/>演示下载中</span><button onClick={()=>setState(s=>({...s,downloads:s.downloads.map(t=>t.id===d.id?{...t,status:'cancelled'}:t)}))}>取消</button></div></>:<div className="download-footer"><span>{d.status==='completed'?<><CheckCircle2 size={12}/>演示任务已完成</>:'任务已停止'}</span>{d.status==='completed'?<button onClick={()=>{exportText(`${d.name}.演示说明.txt`,`Canvas 随行 · 演示文件\n\n原文件名：${d.name}\n课程：${courseById(d.courseId).name}\n\n本文件是交互 Demo 导出的说明，不是真实课件。正式 APK 将使用 Android 系统下载与外部应用打开。`);notify('已导出演示说明，不是真实课件');}}><ExternalLink size={12}/>导出说明</button>:<button onClick={()=>setState(s=>({...s,downloads:s.downloads.map(t=>t.id===d.id?{...t,status:'running',progress:0}:t)}))}><RefreshCw size={12}/>重试</button>}</div>}</div>)}
           </>}
-          {tab === 'assistant' && <><div className="page-heading"><div><p className="eyebrow">AI</p><h1>学习助手</h1></div></div><div className="assistant-entry"><Sparkles size={32}/><h2>从一个问题开始</h2><p>查询课程、梳理作业，或结合课程资料解答问题。</p><button className="button primary" onClick={()=>openAi('学习助手')}>开始对话<ArrowRight size={16}/></button></div><div className="assistant-suggestions">{['本周有哪些作业需要完成？','帮我查找与这个知识点有关的课件','总结最近一堂课的重点'].map(question=><button key={question} onClick={()=>openAi('学习助手',{mode:'agent',args:{initialQuestion:question}})}>{question}<ArrowRight size={15}/></button>)}</div></>}
+          {tab === 'assistant' && <><div className="page-heading"><div><p className="eyebrow">AI</p><h1>学习助手</h1></div></div><div className="assistant-entry"><Sparkles size={32}/><h2>从一个问题开始</h2><p>查询课程、梳理作业，或结合课程资料解答问题。</p><button className="button primary" onClick={()=>openAi('学习助手')}>开始对话<ArrowRight size={16}/></button></div><button className="button secondary full assistant-history" onClick={()=>openAi('学习助手',{mode:'agent',args:{history:true}})}>历史对话<ChevronRight size={16}/></button><div className="assistant-suggestions">{['本周有哪些作业需要完成？','帮我查找与这个知识点有关的课件','总结最近一堂课的重点'].map(question=><button key={question} onClick={()=>openAi('学习助手',{mode:'agent',args:{initialQuestion:question}})}>{question}<ArrowRight size={15}/></button>)}</div></>}
           {tab === 'profile' && <>
             <div className="page-heading"><div><p className="eyebrow">偏好设置</p><h1>设置<span className="heading-dot">.</span></h1></div></div>
             <div className="profile-card"><div className="avatar">同学</div><div><h2>{NATIVE?live.name:'示例同学'}</h2><p>上海交通大学</p><span className="pill gray">{NATIVE?(live.account?'已连接':'未连接'):'演示账号'}</span></div><button className="text-button" onClick={()=>setDialog('login')}>连接账号<ChevronRight size={13}/></button></div>
@@ -360,6 +368,6 @@ export default function App() {
     {!NATIVE&&dialog==='models'&&<Modal title="AI 服务配置" subtitle="正式 APK 的配置预览" onClose={()=>setDialog(null)}><div className="model-card"><Sparkles size={22}/><div><strong>自定义模型服务</strong><span>服务地址 · 模型名称 · API Key</span></div><span className="pill gray">待接入</span></div><p className="paragraph">正式版支持多个服务商与自定义兼容接口。当前 Demo 使用预设回复，不发送文件，也不产生模型费用。</p><button className="button primary full" onClick={()=>{setDialog(null);openAi('学习助手 · 示例课程');}}>体验问答交互 <ArrowRight size={16}/></button></Modal>}
     {NATIVE&&dialog==='about'&&<Modal title="Canvas 随行" subtitle={`Android ${APP_VERSION} · 开源预览版`} onClose={()=>setDialog(null)}><p className="paragraph">交大课程助手。课程、作业、资料、录播与截止提醒，由你配置的账号访问。开发版尚需真实账号和真机验收。</p><div className="notice">尚未配置公开更新源。后续使用相同签名的 APK 覆盖安装更新。</div><button className="button secondary full" onClick={()=>{void live.logout().then(()=>{setDialog(null);notify('已退出账号并取消未完成任务');}).catch(e=>notify(String(e)));}}>退出当前账号</button></Modal>}
     {!NATIVE&&dialog==='about'&&<Modal title="Canvas 随行" subtitle={`SJTU Canvas Helper · Android ${APP_VERSION}`} onClose={()=>setDialog(null)}><div className="about-logo"><BrandIcon/></div><p className="paragraph">面向交大本部的移动学习助手。本演示重点验证作业控制面板、截止提醒、课程资料、录播与任务流程。</p><div className="notice">课程、日期、提交和播放画面均为示例。真实账号、安卓后台下载与系统提醒尚未接入。</div><p className="paragraph subtle">基于 Okabe-Rintarou-0 / SJTU-Canvas-Helper 的安卓移植规划，保留上游 MIT 许可。本页为新增前端原型。</p><button className="button secondary full" onClick={()=>exportText('Canvas随行_演示反馈.txt','Canvas 随行 · Demo 反馈\n\n1. 作业总览与排序：\n2. 提交流程：\n3. 提醒方式：\n4. 课程与录播界面：\n5. 希望调整的地方：\n')}>导出反馈模板<ArrowDownToLine size={15}/></button></Modal>}
-    {itemActions&&<Modal title={itemActions.kind==='course'?'管理课程':'管理作业'} subtitle={itemActions.kind==='course'?courseById(itemActions.id).name:state.assignments.find(a=>a.id===itemActions.id)?.title} onClose={()=>setItemActions(null)}><div className="action-sheet"><p>操作保存在当前账号的手机中，随同步保留。</p>{itemActions.kind==='course'&&<button className="button secondary full" onClick={()=>togglePin(itemActions.id)}><Pin size={17}/>{prefs.pinnedCourses.includes(itemActions.id)?'取消课程置顶':'置顶这门课程'}</button>}{itemActions.kind==='assignment'&&!prefs.ignoredAssignments.includes(itemActions.id)&&!prefs.hiddenAssignments.includes(itemActions.id)&&<button className="button secondary full" onClick={()=>changeItem('assignment',itemActions.id,'ignore')}><Bell size={17}/>忽略这项作业 · 停止提醒</button>}{(itemActions.kind==='course'?prefs.hiddenCourses.includes(itemActions.id):prefs.ignoredAssignments.includes(itemActions.id)||prefs.hiddenAssignments.includes(itemActions.id))&&<button className="button primary full" onClick={()=>changeItem(itemActions.kind,itemActions.id,'restore')}><RefreshCw size={17}/>恢复显示与提醒</button>}<button className="button secondary full danger" onClick={()=>changeItem(itemActions.kind,itemActions.id,'hide')}><Trash2 size={17}/>从本机列表移除</button><div className="notice">不会删除 Canvas 上的课程、作业或提交记录。移除的课程与作业停止提醒，可在“已移除”中恢复。</div></div></Modal>}{aiOpen&&<Modal title="Canvas 学习助手" subtitle={aiContext} wide onClose={()=>setAiOpen(false)}><AiChat context={aiContext} payload={aiPayload} modelName={live.account?.modelName} onTime={seekAiReference} onConfigure={()=>{setAiOpen(false);setDialog('models');}}/></Modal>}
+    {itemActions&&<Modal title={itemActions.kind==='course'?'管理课程':'管理作业'} subtitle={itemActions.kind==='course'?courseById(itemActions.id).name:state.assignments.find(a=>a.id===itemActions.id)?.title} onClose={()=>setItemActions(null)}><div className="action-sheet"><p>操作保存在当前账号的手机中，随同步保留。</p>{itemActions.kind==='course'&&<button className="button secondary full" onClick={()=>togglePin(itemActions.id)}><Pin size={17}/>{prefs.pinnedCourses.includes(itemActions.id)?'取消课程置顶':'置顶这门课程'}</button>}{itemActions.kind==='assignment'&&!prefs.ignoredAssignments.includes(itemActions.id)&&!prefs.hiddenAssignments.includes(itemActions.id)&&<button className="button secondary full" onClick={()=>changeItem('assignment',itemActions.id,'ignore')}><Bell size={17}/>忽略这项作业 · 停止提醒</button>}{(itemActions.kind==='course'?prefs.hiddenCourses.includes(itemActions.id):prefs.ignoredAssignments.includes(itemActions.id)||prefs.hiddenAssignments.includes(itemActions.id))&&<button className="button primary full" onClick={()=>changeItem(itemActions.kind,itemActions.id,'restore')}><RefreshCw size={17}/>恢复显示与提醒</button>}<button className="button secondary full danger" onClick={()=>changeItem(itemActions.kind,itemActions.id,'hide')}><Trash2 size={17}/>从本机列表移除</button><div className="notice">不会删除 Canvas 上的课程、作业或提交记录。移除的课程与作业停止提醒，可在“已移除”中恢复。</div></div></Modal>}{aiVisited&&<AiChat context={aiContext} payload={aiPayload} storageScope={scope} open={aiOpen} onClose={()=>setAiOpen(false)} modelName={live.account?.modelName} onTime={seekAiReference} onConfigure={()=>{setAiOpen(false);setDialog('models');}}/>}
   </div>;
 }

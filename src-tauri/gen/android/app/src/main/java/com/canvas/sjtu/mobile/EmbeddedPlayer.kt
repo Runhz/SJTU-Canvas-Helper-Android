@@ -43,9 +43,10 @@ class EmbeddedPlayer(private val activity:MainActivity){
     // open/layout callback must not put native video back above a web dialog.
     private var uiOccluded=false
     private var inlineVisible=true
+    private var lastSavedAt=0L
     private var oldOrientation=ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     private val handler=android.os.Handler(android.os.Looper.getMainLooper())
-    private val sync=object:Runnable{override fun run(){val main=primary;val other=secondary;if(main!=null&&other!=null){if(abs(main.currentPosition-other.currentPosition)>500)other.seekTo(main.currentPosition);other.playWhenReady=main.playWhenReady;other.setPlaybackSpeed(main.playbackParameters.speed)};handler.postDelayed(this,1000)}}
+    private val sync=object:Runnable{override fun run(){val main=primary;val other=secondary;if(main!=null&&other!=null){if(abs(main.currentPosition-other.currentPosition)>500)other.seekTo(main.currentPosition);other.playWhenReady=main.playWhenReady;other.setPlaybackSpeed(main.playbackParameters.speed)};if(android.os.SystemClock.elapsedRealtime()-lastSavedAt>=5000)savePlayback();handler.postDelayed(this,1000)}}
     fun open(value:JSONObject,accountId:String){
         close();args=value;account=accountId;rect=value.getJSONObject("rect");index=0
         val root=LinearLayout(activity).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(Color.rgb(25,30,24))}
@@ -55,9 +56,13 @@ class EmbeddedPlayer(private val activity:MainActivity){
         root.clipToOutline=true
         root.outlineProvider=object:android.view.ViewOutlineProvider(){override fun getOutline(view:View,outline:android.graphics.Outline){outline.setRoundRect(0,0,view.width,view.height,if(dialog==null)22*activity.resources.displayMetrics.density else 0f)}}
         host=root;decor.addView(root)
-        primary=makePlayer(0);primaryView?.player=primary
-        primary?.seekTo(activity.getSharedPreferences("playback",0).getLong(positionKey(),0));primary?.playWhenReady=!uiOccluded
-        layout(rect,true);handler.post(sync)
+        val saved=activity.getSharedPreferences("playback",0)
+        index=saved.getInt(positionKey()+":camera",0).coerceIn(0,args.getJSONArray("tracks").length()-1)
+        primary=makePlayer(index);primaryView?.player=primary
+        primary?.seekTo(saved.getLong(positionKey(),0));primary?.setPlaybackSpeed(saved.getFloat(positionKey()+":speed",1f).coerceIn(.5f,3f))
+        primary?.playWhenReady=value.optBoolean("autoplay",true)&&!uiOccluded
+        if(saved.getBoolean(positionKey()+":dual",false)&&args.getJSONArray("tracks").length()>1)control(JSONObject().put("action","dual"))
+        layout(rect,value.optBoolean("visible",true));handler.post(sync)
     }
     private fun makePlayer(trackIndex:Int):ExoPlayer{
         val track=args.getJSONArray("tracks").getJSONObject(trackIndex);val uri=Uri.parse(track.getString("url"));require(uri.scheme=="https")
@@ -114,7 +119,8 @@ class EmbeddedPlayer(private val activity:MainActivity){
         if(image!==source)image.recycle();source.recycle()
         return JSONObject().put("image","data:image/jpeg;base64,"+android.util.Base64.encodeToString(output.toByteArray(),android.util.Base64.NO_WRAP)).put("positionMs",primary?.currentPosition?:0).put("resourceId",args.optString("resourceId"))
     }
-    fun pause(){primary?.let{activity.getSharedPreferences("playback",0).edit().putLong(positionKey(),it.currentPosition).apply();it.pause()};secondary?.pause()}
+    private fun savePlayback(){primary?.let{activity.getSharedPreferences("playback",0).edit().putLong(positionKey(),it.currentPosition).putFloat(positionKey()+":speed",it.playbackParameters.speed).putInt(positionKey()+":camera",index).putBoolean(positionKey()+":dual",secondary!=null).apply();lastSavedAt=android.os.SystemClock.elapsedRealtime()}}
+    fun pause(){savePlayback();primary?.pause();secondary?.pause()}
     private fun stopSecondary(){secondaryView?.player=null;secondary?.release();secondary=null;secondaryView?.visibility=View.GONE}
     fun close(){handler.removeCallbacks(sync);pause();dialog?.dismiss();dialog=null;primaryView?.player=null;primary?.release();primary=null;stopSecondary();host?.let{(it.parent as? ViewGroup)?.removeView(it)};host=null}
 }

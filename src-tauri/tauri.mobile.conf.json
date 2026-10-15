@@ -1,6 +1,6 @@
 {
   "productName": "Canvas 随行",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "identifier": "com.canvas.sjtu.mobile",
   "build": {
     "beforeDevCommand": "npm --prefix demo run dev",

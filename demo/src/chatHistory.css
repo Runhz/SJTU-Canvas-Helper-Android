@@ -1,0 +1,12 @@
+.chat-history-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0 16px;border-bottom:1px solid var(--line);margin-bottom:14px}
+.chat-history-list{display:flex;flex-direction:column;gap:10px;max-height:62dvh;overflow:auto;overscroll-behavior:contain}
+.chat-history-item{display:flex;align-items:center;gap:8px;padding:6px;border:1px solid var(--line);border-radius:16px;background:var(--card);transition:background .18s,transform .18s}
+.chat-history-item:active{transform:scale(.99)}
+.chat-history-open{flex:1;min-width:0;text-align:left;display:flex;flex-direction:column;gap:9px;padding:13px 10px;border-radius:12px}
+.chat-history-open strong{font-size:14px;font-weight:600;line-height:1.5;overflow-wrap:anywhere}
+.chat-history-open span{font-size:12px;line-height:1.65;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.chat-history-open small{font-size:10px;color:var(--muted)}
+.chat-history-item>.icon-button{margin-right:6px;min-width:42px;min-height:42px;font-size:11px}
+.classroom-history{margin:12px 0}.assistant-history{margin:0 0 16px}
+[hidden]{display:none!important}
+@media(prefers-reduced-motion:reduce){.chat-history-item{transition:none}}

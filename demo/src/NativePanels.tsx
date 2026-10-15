@@ -11,6 +11,7 @@ import { formatDate, countdown, statusOf, type Assignment, type DownloadTask, ty
 import type { useLiveCanvas } from './useLiveCanvas';
 import {QrLogin} from './QrLogin';
 import {ModelCapabilityHint} from './ModelCapabilityHint';
+import {accountScope,defaultLecture,decodeLecture,useRememberedState,type LectureMemory} from './pageMemory';
 type Live=ReturnType<typeof useLiveCanvas>;
 export function NativeSyllabus({course}:{course:Course}){
   const [body,setBody]=useState('正在读取课程大纲…');
@@ -99,16 +100,20 @@ export function NativeAssignmentPanel({assignment,live,notify,onDone,onBusy}:{as
 }
 
 export function NativeRecordings({live,courses,allCourses,term,setTerm,notify,onAi,obscured}:{live:Live;courses:Course[];allCourses:Course[];term:string;setTerm:(s:string)=>void;notify:(s:string)=>void;onAi:(context:string,payload?:{mode:string;args:Record<string,unknown>})=>void;obscured:boolean}){
-  const [courseId,setCourseId]=useState(''),[selected,setSelected]=useState<runtime.Recording|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[subQuery,setSubQuery]=useState(''),[section,setSection]=useState('subtitles');
+  const [memory,setMemory]=useRememberedState(`canvas-lecture-v1:${accountScope(live.account)}`,defaultLecture,decodeLecture);
+  function field<K extends keyof LectureMemory>(key:K):[LectureMemory[K],React.Dispatch<React.SetStateAction<LectureMemory[K]>>]{return [memory[key],next=>setMemory(old=>{const value=typeof next==='function'?(next as (value:LectureMemory[K])=>LectureMemory[K])(old[key]):next;return value===old[key]?old:{...old,[key]:value};})];}
+  const [courseId,setCourseId]=field('courseId'),[selected,setSelected]=field('selected'),[subQuery,setSubQuery]=field('subQuery'),[section,setSection]=field('section');
+  const [busy,setBusy]=useState(false),[error,setError]=useState('');
   const [materials,setMaterials]=useState<Awaited<ReturnType<typeof runtime.materialText>>|null>(null);
-  const [positionMs,setPositionMs]=useState(0),[selectedLines,setSelectedLines]=useState<number[]>([]),[subtitleScope,setSubtitleScope]=useState<'all'|'selected'|'none'>('all');
-  const request=useRef(0);
-  useEffect(()=>{if(courseId&&!courses.some(c=>c.id===courseId)){request.current++;setCourseId('');setSelected(null);setMaterials(null);setBusy(false);}},[term,courses.map(c=>c.id).join(',')]);
+  const [positionMs,setPositionMs]=field('positionMs'),[selectedLines,setSelectedLines]=field('selectedLines'),[subtitleScope,setSubtitleScope]=field('subtitleScope');
+  const request=useRef(0),restore=useRef(true);
+  useEffect(()=>{if(!allCourses.length)return;if(courseId&&!courses.some(c=>c.id===courseId)){request.current++;setCourseId('');setSelected(null);setMaterials(null);setBusy(false);return;}if(restore.current&&courseId){restore.current=false;if(selected){const ticket=++request.current;setMaterials(live.peekMaterials(selected));setBusy(true);void live.loadMaterials(selected).then(value=>{if(request.current===ticket)setMaterials(value);}).catch(e=>{if(request.current===ticket)setError(String(e));}).finally(()=>{if(request.current===ticket)setBusy(false);});}else{void load(courseId);}}},[term,courses.map(c=>c.id).join(',')]);
   useEffect(()=>()=>{request.current++;},[]);
-  async function load(id:string,force=false){const ticket=++request.current;setCourseId(id);setSelected(null);setMaterials(null);const course=courses.find(c=>c.id===id);if(!course)return;setBusy(true);setError('');try{await live.videos(course,force);}catch(e){if(request.current===ticket)setError(String(e));}finally{if(request.current===ticket)setBusy(false);}}
+  async function load(id:string,force=false){restore.current=false;const ticket=++request.current;setCourseId(id);setSelected(null);setMaterials(null);const course=courses.find(c=>c.id===id);if(!course)return;setBusy(true);setError('');try{await live.videos(course,force);}catch(e){if(request.current===ticket)setError(String(e));}finally{if(request.current===ticket)setBusy(false);}}
   async function choose(recording:runtime.Recording,force=false){
-    const ticket=++request.current,cached=live.peekMaterials(recording);setSelected(recording);setMaterials(cached);
-    if(!force){setSelectedLines([]);setSubtitleScope('all');setPositionMs(0);setSubQuery('');}
+    restore.current=false;
+    const ticket=++request.current,cached=live.peekMaterials(recording);setSelected(decodeLecture({courseId:recording.courseId,selected:recording}).selected);setMaterials(cached);
+    if(!force){setSelectedLines([]);setSubtitleScope('all');setPositionMs(0);setSubQuery('');setMemory(old=>({...old,hasPlayed:false}));}
     setError('');setBusy(true);
     try{const result=await live.loadMaterials(recording,force);if(request.current===ticket){
       if(cached)setSelectedLines(indices=>indices.map(i=>result.lines.findIndex(line=>line.bg===cached.lines[i]?.bg&&line.res===cached.lines[i]?.res)).filter(i=>i>=0));
@@ -124,7 +129,7 @@ export function NativeRecordings({live,courses,allCourses,term,setTerm,notify,on
     if(!screenshot&&subtitleScope!=='all'&&!contextIndices.length){notify('请选择用于提问的字幕');return;}
     const text=subtitleScope==='selected'?(contextIndices.length?selectedLectureText(lines,contextIndices,selected.title,`${selected.source}:${selected.id}`):''):subtitleScope==='none'?'':materials?.text||'';
     const timePoints=subtitleScope==='none'?[]:subtitleScope==='selected'?contextIndices.map(i=>Math.floor(lines[i].bg/1000)):[...lines.map(l=>Math.floor(l.bg/1000)),...(materials?.slides||[]).filter(s=>s.createSec!==null&&s.createSec!==undefined&&Number.isFinite(Number(s.createSec))).map(s=>Math.floor(Number(s.createSec)))];
-    onAi(selected.title+' · 课堂问答',{mode:'materials',args:{text,title:selected.title,resourceId:`${selected.source}:${selected.id}`,timePoints,...(screenshot?{screenshot,positionMs,positionLabel:subtitleTime(positionMs)}:{}),initialQuestion:summary?'请总结本堂课的知识框架、重点和易错点，引用资料中已有的时间点。':''}});
+    onAi(selected.title+' · 课堂问答',{mode:'materials',args:{text,title:selected.title,resourceId:`${selected.source}:${selected.id}`,courseId:selected.courseId,timePoints,...(screenshot?{screenshot,positionMs,positionLabel:subtitleTime(positionMs)}:{}),initialQuestion:summary?'请总结本堂课的知识框架、重点和易错点，引用资料中已有的时间点。':''}});
   }
   function downloadSubtitle(format:'srt'|'txt'){if(!selected||!materials?.lines.length)return;perform(()=>runtime.native('exportFile',{name:selected.title+'.'+format,mime:format==='srt'?'application/x-subrip':'text/plain',text:subtitleExport(materials.lines,format)}));}
   return <>
@@ -140,15 +145,16 @@ export function NativeRecordings({live,courses,allCourses,term,setTerm,notify,on
     {selected&&<>
       <button className="back-link" onClick={()=>{request.current++;setBusy(false);setSelected(null);setMaterials(null);}}>返回录播列表</button>
       <div className="learning-layout"><section className="learning-player" aria-label="课堂播放区">
-      <InlinePlayer key={selected.id} recording={selected} obscured={obscured} notify={notify} onStatus={status=>setPositionMs(status.positionMs)} onScreenshot={(image,ms)=>classroomAi(false,image,ms)}/>
+      <InlinePlayer key={`${selected.source}:${selected.id}`} recording={selected} obscured={obscured} resume={memory.hasPlayed} notify={notify} onStatus={status=>{setPositionMs(status.positionMs);if(status.opened)setMemory(old=>old.hasPlayed?old:{...old,hasPlayed:true});}} onScreenshot={(image,ms)=>classroomAi(false,image,ms)}/>
       <div className="video-title"><h2>{selected.title}</h2><p></p></div>
       <div className="video-actions"><button disabled={!materials?.text.trim()} onClick={()=>classroomAi(true)}><Sparkles size={17}/>AI 总结</button><button disabled={!materials?.text.trim()} onClick={()=>classroomAi()}><MessageCircle size={17}/>课堂提问</button><button onClick={()=>perform(async()=>{if(!live.account)return;await runtime.enqueueRecording(selected,live.account.accountId);notify('录播已加入系统下载');})}><ArrowDownToLine size={17}/>下载视频</button></div>
+      <button className="text-button classroom-history" onClick={()=>onAi(selected.title+' · 课堂问答',{mode:'materials',args:{resourceId:`${selected.source}:${selected.id}`,title:selected.title,history:true}})}><MessageCircle size={15}/>本堂课的对话记录</button>
       <button className="classroom-ai-card" disabled={!materials?.text.trim()} onClick={()=>classroomAi()}><Sparkles size={23}/><div><strong>课堂助手</strong><span>{materials?.text.trim()?'结合字幕与课件提问':'暂无课堂资料'}</span></div><ChevronRight size={18}/></button>
       </section><section className="learning-materials" aria-label="课堂学习资料">
       <div className="underlined-tabs"><button className={section==='subtitles'?'selected':''} onClick={()=>setSection('subtitles')}>字幕</button><button className={section==='slides'?'selected':''} onClick={()=>setSection('slides')}>课件切片 / OCR</button><button disabled={busy} aria-label="刷新课堂资料" onClick={()=>void choose(selected,true)}><RefreshCw size={15}/></button></div>
       {section==='subtitles'&&<>
         {!!materials?.lines.length&&<div className="button-row subtitle-downloads"><button className="button secondary" onClick={()=>downloadSubtitle('srt')}><ArrowDownToLine size={16}/>下载 SRT 字幕</button><button className="button secondary" onClick={()=>downloadSubtitle('txt')}>下载文字稿</button></div>}
-        <label className="search-field"><Search size={15}/><input placeholder="搜索字幕" value={subQuery} onChange={e=>setSubQuery(e.target.value)}/></label>
+        <label className="search-field"><Search size={15}/><input aria-label="搜索字幕" placeholder="搜索字幕" value={subQuery} onChange={e=>setSubQuery(e.target.value)}/></label>
         <LectureSubtitles lines={materials?.lines||[]} query={subQuery} positionMs={positionMs} onSeek={seek} selected={selectedLines} onSelected={setSelectedLines} scope={subtitleScope} onScope={setSubtitleScope}/>
         {!busy&&!materials?.lines.length&&<div className="notice">平台未返回可用字幕</div>}
       </>}
