@@ -5,7 +5,7 @@ Canvas 随行的 Android 移植基于 [Okabe-Rintarou-0/SJTU-Canvas-Helper](http
 - 上游基线：3.0.13，提交 `4246f2f5ed35b3f5a7ba1375221783ba3ba5247e`。
 - 上游 MIT 许可和版权声明完整保留于 [LICENSE](LICENSE)。
 - Android 界面、Kotlin 能力层与移动适配沿用 MIT 许可。
-- Android fork 由 [hzr666ABC](https://github.com/hzr666ABC/SJTU-Canvas-Helper-Android) 独立维护；GitHub 保留与上游的 fork 关系，默认开发分支为 `android`。上游 `main` 与安卓分支分开，不向原项目提交整套安卓移植的合并请求。
+- Android fork 由 [Runhz](https://github.com/Runhz/SJTU-Canvas-Helper-Android) 独立维护；GitHub 保留与上游的 fork 关系，默认开发分支为 `android`。上游 `main` 与安卓分支分开，不向原项目提交整套安卓移植的合并请求。
 - Windows／桌面版的下载、支持和更新请访问原项目；Android 版本号单独管理，不表示上游发布了同名版本，也不代表上游作者认可本移植。
 - 原桌面版说明和工作流保留在 `docs/upstream/`，供追溯；该目录的工作流不会运行。
 - 本项目非学校官方产品；名称不表示学校或上游作者的背书。
