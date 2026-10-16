@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-0.5.4 是当前 Android 开源预览版本。界面测试、模拟服务测试和成功打包各自证明不同环节，不能代替真机与真实账号验收。未验证部分见 [ACCEPTANCE.md](ACCEPTANCE.md)。
+0.5.4 是当前 Android 正式 Release，用户于 2026-10-16 确认真机验收完成。发布使用同一份已验收 APK，保留原开发证书与校验值，不重新构建。自动检查与用户验收分别记录，详见 [ACCEPTANCE.md](ACCEPTANCE.md)。
 
 ## 上传 GitHub 之前
 

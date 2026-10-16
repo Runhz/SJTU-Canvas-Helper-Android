@@ -3,14 +3,14 @@
   <h1>Canvas 随行</h1>
   <p>课程、作业与课堂资料</p>
   <p>面向上海交通大学本部的 Android 学习助手 · 手机与平板</p>
-  <p><strong>0.5.4 预览 · Android 10+ · ARM64 · MIT</strong></p>
+  <p><strong>0.5.4 · Android 10+ · ARM64 · MIT</strong></p>
 </div>
 
 Canvas 随行将作业截止日期、课程资料、课堂录播和 AI 问答放在同一个学习空间。基于 [SJTU-Canvas-Helper](https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper) 3.0.13 移植，采用 Tauri 2、React、Rust 与 Kotlin。非学校官方客户端，仅支持本部 `oc.sjtu.edu.cn`。
 
 这是由 [hzr666ABC](https://github.com/hzr666ABC) 独立维护的 **Android 手机／平板移植 fork**，与上游作者无隶属关系。Windows／桌面版请使用[原项目](https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper)；安卓问题请在[本 fork](https://github.com/hzr666ABC/SJTU-Canvas-Helper-Android/issues)反馈。安卓开发与版本号在 `android` 分支独立演进，保留上游版权、MIT 许可及源码历史。
 
-**当前为预览版本。** 核心界面和接口已接入，真实账号、长时间后台任务和全设备验收仍未全部完成。支持范围与待完成项目以 [验收表](docs/ACCEPTANCE.md) 为准，不应将演示交互当作真实服务器结果。
+**0.5.4 正式 Release。** 用户于 2026-10-16 确认真机验收完成。[下载 APK](https://github.com/hzr666ABC/SJTU-Canvas-Helper-Android/releases/tag/android-v0.5.4)。支持范围与验收记录见 [验收表](docs/ACCEPTANCE.md)；浏览器演示仍使用示例数据。
 
 ## 看看界面
 
@@ -46,7 +46,7 @@ npm --prefix demo run dev
 
 需要 Node 24。打开终端显示的本地地址，即可体验手机／平板原型。**网页预览是示例数据，不需要填写真实凭据。** APK 才包含学校服务连接和原生能力。
 
-开发预览 APK 可由维护者提供，或在本仓库 GitHub Actions 中手动运行 **Build Android preview APK** 获取。请核实产物架构、签名与版本。Android 10 以下不支持；不同构建环境的开发签名可能无法覆盖安装。
+安装包见 [GitHub Releases](https://github.com/hzr666ABC/SJTU-Canvas-Helper-Android/releases)。0.5.4 沿用此前开发证书，可覆盖同签名旧版。也可在本仓库 GitHub Actions 中手动运行 **Build Android preview APK** 获取独立开发构建。Android 10 以下不支持；不同构建环境的签名可能无法覆盖安装。
 
 ## 开发与贡献
 
