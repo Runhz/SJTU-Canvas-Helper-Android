@@ -6,9 +6,9 @@ import {NativeRecordings} from './NativePanels';
 import type {Course} from './domain';
 const course:Course={id:'1',name:'测试课程',code:'TEST',teacher:'',color:'blue',glyph:'network',files:[]};
 const recording:runtime.Recording={id:'201',title:'测试课堂',courseId:'1',source:'canvas',materialsId:501,raw:{}};
-beforeEach(()=>localStorage.clear());
+beforeEach(()=>{localStorage.clear();Object.defineProperty(HTMLElement.prototype,'scrollTo',{configurable:true,value:vi.fn()});});
 beforeEach(()=>{vi.clearAllMocks();vi.mocked(runtime.native).mockResolvedValue({});vi.mocked(runtime.recordingTracks).mockResolvedValue([{url:'https://example.test/video.mp4',headers:{}}]);vi.mocked(runtime.materialText).mockResolvedValue({lines:[{bg:1000,ed:4000,res:'课堂原始字幕'}],slides:[],text:'课堂原始字幕'});vi.stubGlobal('requestAnimationFrame',(f:()=>void)=>setTimeout(f,0));vi.stubGlobal('cancelAnimationFrame',clearTimeout);});
-afterEach(()=>{cleanup();vi.unstubAllGlobals()});
+afterEach(()=>{cleanup();delete (HTMLElement.prototype as Partial<HTMLElement>).scrollTo;vi.unstubAllGlobals()});
 async function setup(){
   const live={account:{accountId:'test'},courses:[course],recordings:[recording],videos:vi.fn().mockResolvedValue([recording]),loadMaterials:runtime.materialText,peekMaterials:()=>null} as unknown as Parameters<typeof NativeRecordings>[0]['live'];
   const onAi=vi.fn();render(<NativeRecordings live={live} courses={[course]} allCourses={[course]} term="current" setTerm={()=>{}} notify={()=>{}} onAi={onAi} obscured={false}/>);
@@ -32,12 +32,13 @@ describe('课堂学习页',()=>{
     await setup();fireEvent.click(screen.getByRole('button',{name:'播放本堂课'}));
     await waitFor(()=>expect(runtime.native).toHaveBeenCalledWith('embedPlayer',expect.objectContaining({resourceId:'canvas:201'})));
     fireEvent.click(screen.getByRole('button',{name:/00:00:01.*课堂原始字幕/}));
-    expect(runtime.native).toHaveBeenCalledWith('playerControl',{action:'seek',positionMs:1000});
+    expect(runtime.native).toHaveBeenCalledWith('playerControl',{action:'seek',positionMs:1000,resourceId:'canvas:201'});
   });
   it('下载字幕保持原始时间，课堂提问绑定当前课堂资料',async()=>{
     const {onAi}=await setup();fireEvent.click(screen.getByRole('button',{name:'下载 SRT 字幕'}));
     expect(runtime.native).toHaveBeenCalledWith('exportFile',expect.objectContaining({name:'测试课堂.srt',text:'1\n00:00:01,000 --> 00:00:04,000\n课堂原始字幕\n'}));
-    fireEvent.click(screen.getByRole('button',{name:'课堂提问'}));
+    fireEvent.click(screen.getByRole('button',{name:/00:00:01.*课堂原始字幕/}));fireEvent.click(screen.getByRole('button',{name:'问这里'}));
+    await waitFor(()=>expect(onAi).toHaveBeenCalled());
     expect(onAi).toHaveBeenCalledWith('测试课堂 · 课堂问答',expect.objectContaining({mode:'materials',args:expect.objectContaining({text:expect.stringContaining('课堂原始字幕'),resourceId:'canvas:201',timePoints:[1]})}));
   });
 });

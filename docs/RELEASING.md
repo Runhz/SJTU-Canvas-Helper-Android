@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-0.5.4 是当前 Android 正式 Release，用户于 2026-10-16 确认真机验收完成。发布使用同一份已验收 APK，保留原开发证书与校验值，不重新构建。自动检查与用户验收分别记录，详见 [ACCEPTANCE.md](ACCEPTANCE.md)。
+0.8.4 作为开发预览发布，上传已经构建的同一份 ARM64 APK，保留开发证书与校验值。本轮未连接设备完成真机及学校服务验收，详见 [RELEASE_0.8.4.md](RELEASE_0.8.4.md)。0.5.4 仍是此前由用户于 2026-10-16 确认验收的稳定 Release；其验收记录不适用于新版本，详见 [ACCEPTANCE.md](ACCEPTANCE.md)。
 
 ## 上传 GitHub 之前
 
@@ -20,7 +20,7 @@
 2. 完成前端、UTF-8、Rust 核心检查；在新克隆的源码中重复前端安装和构建。
 3. 核实 API 29、较新 Android 和目标真机／平板的安装、导航、登录、后台下载、通知与升级。
 4. 真正的稳定发行需要完成验收表的全部必测项。未完成时标注 prerelease，并列出限制。
-5. 用维护者的私钥签名，核实包名、versionCode、最低 SDK、签名和 APK SHA-256。
+5. 稳定发行使用维护者的正式私钥签名，核实包名、versionCode、最低 SDK、签名和 APK SHA-256。沿用开发证书的测试包必须明确标为开发签名预览，不冒充正式签名。
 6. Release 附 APK、校验值、变更记录和已知限制；不要附私钥或包含账号数据的日志。
 
 参考 [GitHub Actions 工作流说明](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)。本 fork 已在 0.5.3 提交验证过 Windows／Linux 前端与 Rust 核心云端检查；每个新提交仍以对应 Actions 实际结果为准。手动云端 APK 构建与本机 APK 构建分别记录，不互相替代。

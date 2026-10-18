@@ -1,0 +1,14 @@
+import '../compat';
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import App from '../App';
+import {ErrorBoundary} from '../ErrorBoundary';
+import '../styles.css';
+import '../adaptive.css';
+import '../reading.css';
+import '../experience.css';
+import '../refined.css';
+import '../theme.css';
+import '../mobilePolish.css';
+import './style.css';
+createRoot(document.getElementById('root')!).render(<React.StrictMode><div className="layout-preview-root"><ErrorBoundary><App layoutPreview/></ErrorBoundary></div></React.StrictMode>);

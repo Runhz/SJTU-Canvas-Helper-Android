@@ -11,6 +11,9 @@ test('public export excludes local evidence and generated artifacts', () => {
   assert.ok(!files.some(p=>p.startsWith('artifacts/') || p.includes('/node_modules/') || p.includes('/jniLibs/')));
   assert.ok(!files.includes('docs/AUTH_ACCEPTANCE.md'));
   assert.ok(!files.some(p=>p.endsWith('.jks') || p.endsWith('local.properties')));
+  assert.ok(files.includes('docs/RELEASE_0.8.4.md'));
+  assert.ok(files.includes('assets/branding/app-icon.svg'));
+  assert.ok(!files.some(p=>p.startsWith('demo/public/licenses/office/')));
 });
 
 test('credential, key and invalid UTF-8 checks report categories without values', () => {

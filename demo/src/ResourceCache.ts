@@ -6,7 +6,7 @@ export class ResourceCache {
   private closed = false;
   constructor(private namespace: string, private now = Date.now) {
     try { const value = JSON.parse(localStorage.getItem(namespace) || 'null'); if (value?.version === 1) for (const [key, entry] of Object.entries(value.entries || {})) {
-      const e = entry as Entry<unknown>; if (Number.isFinite(e.fetchedAt) && e.data !== undefined) this.entries.set(key, e);
+      const e = entry as Entry<unknown>; if (key !== 'videoLogin' && Number.isFinite(e.fetchedAt) && e.data !== undefined) this.entries.set(key, e);
     } } catch { /* A corrupt cache is replaceable. */ }
   }
   peek<T>(key: string): T | undefined { return this.entries.get(key)?.data as T | undefined; }

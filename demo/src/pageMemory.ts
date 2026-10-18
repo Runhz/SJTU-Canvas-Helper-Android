@@ -73,7 +73,7 @@ export function decodeLecture(raw: unknown): LectureMemory {
   const selected = value.selected;
   const valid = selected && typeof selected.id === 'string' && typeof selected.title === 'string' && selected.courseId === value.courseId && ['canvas','videoSpace','legacy'].includes(selected.source) && Number.isFinite(selected.materialsId);
   return { courseId: value.courseId, selected: valid ? { id: selected.id, title: selected.title, courseId: selected.courseId, source: selected.source, materialsId: selected.materialsId, raw: {} } : null,
-    subQuery: typeof value.subQuery === 'string' ? value.subQuery : '', section: value.section === 'slides' ? 'slides' : 'subtitles',
+    subQuery: typeof value.subQuery === 'string' ? value.subQuery : '', section: value.section === 'slides' || value.section==='notes' ? value.section : 'subtitles',
     positionMs: Number.isFinite(value.positionMs) ? Math.max(0, value.positionMs!) : 0,
     selectedLines: Array.isArray(value.selectedLines) ? value.selectedLines.filter(i => Number.isInteger(i) && i >= 0) : [],
     subtitleScope: value.subtitleScope === 'selected' || value.subtitleScope === 'none' ? value.subtitleScope : 'all', hasPlayed: value.hasPlayed === true };

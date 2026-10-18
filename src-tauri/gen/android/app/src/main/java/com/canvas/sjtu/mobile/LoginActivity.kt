@@ -37,7 +37,7 @@ class LoginActivity: Activity() {
         root.addView(Button(this).apply{text="我已完成登录，返回验证";setOnClickListener{
             val cookie=CookieManager.getInstance().getCookie("https://jaccount.sjtu.edu.cn")?.split(";")?.map{it.trim()}?.firstOrNull{it.startsWith("JAAuthCookie=")}
             if(cookie.isNullOrBlank())Toast.makeText(this@LoginActivity,"尚未检测到登录凭据，请先在官方页面完成登录",Toast.LENGTH_LONG).show()
-            else{CookieManager.getInstance().flush();setResult(RESULT_OK,Intent().putExtra("cookie",cookie));finish()}
+            else{CookieManager.getInstance().flush();setResult(RESULT_OK,Intent().putExtra("cookie",cookie).putExtra("accountId",intent.getStringExtra("accountId")));finish()}
         }})
         setContentView(root)
         val requested=intent.getStringExtra("url")?:"https://my.sjtu.edu.cn/ui/appmyinfo"

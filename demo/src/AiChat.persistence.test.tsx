@@ -4,10 +4,11 @@ vi.mock('./runtime',()=>({NATIVE:true,ai:vi.fn(),native:vi.fn().mockResolvedValu
 import * as runtime from './runtime';
 import {AiChat} from './AiChat';
 import {listConversations} from './chatHistory';
+import {activateChatScope,flushChats} from './chatSession';
 const payload={mode:'materials',args:{resourceId:'canvas:42',text:'课堂原字幕',timePoints:[4]}};
 const props={storageScope:'student-a',context:'测试课堂',payload,onTime:vi.fn(),onConfigure:vi.fn()};
-beforeEach(async()=>{await listConversations('unused');localStorage.clear();vi.clearAllMocks();});
-afterEach(cleanup);
+beforeEach(async()=>{await listConversations('unused');localStorage.clear();vi.clearAllMocks();activateChatScope('student-a');});
+afterEach(()=>{cleanup();activateChatScope('cleanup')});
 async function ready(){await waitFor(()=>expect((screen.getByRole('textbox',{name:'向学习助手提问'}) as HTMLTextAreaElement).disabled).toBe(false));}
 function question(text:string){fireEvent.change(screen.getByRole('textbox',{name:'向学习助手提问'}),{target:{value:text}});fireEvent.click(screen.getByRole('button',{name:'发送问题'}));}
 describe('persistent classroom chat',()=>{
@@ -33,7 +34,7 @@ describe('persistent classroom chat',()=>{
   it('flushes partial text on teardown, exposes it in history and does not resend automatically',async()=>{
     vi.mocked(runtime.ai).mockImplementation((_m,_a,_q,emit)=>{emit('已收到但还没绘制的正文');return new Promise(()=>{});});
     const view=render(<AiChat {...props}/>);await ready();question('解释公式');view.unmount();
-    expect(runtime.cancelAi).toHaveBeenCalledTimes(1);
+    expect(runtime.cancelAi).not.toHaveBeenCalled();flushChats();
     const rows=await listConversations('student-a');expect(rows[0].messages.at(-1)?.content).toBe('已收到但还没绘制的正文');expect(rows[0].interrupted).toBe(true);
     render(<AiChat {...props} payload={{mode:'agent',args:{history:true}}}/>);
     await waitFor(()=>expect(screen.getByRole('button',{name:/测试课堂.*解释公式/})).toBeTruthy());

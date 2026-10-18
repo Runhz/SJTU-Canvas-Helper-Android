@@ -1,5 +1,6 @@
+import {assignmentFile} from './assignmentFiles';
 import { useEffect, useRef, useState } from 'react';
-import type { Assignment, Course, DownloadTask, Reminder, ReminderSettings } from './domain';
+import type { Assignment, Course, CourseFile, DownloadTask, Reminder, ReminderSettings } from './domain';
 import { DEFAULT_REMINDERS } from './domain';
 import * as runtime from './runtime';
 import {defaultStudy,studyPreferences,reminderScope,coursesForTerm,type StudyPreferences} from './study';
@@ -79,16 +80,25 @@ export function useLiveCanvas(){
   },[account,state,courses]);
   useEffect(()=>{
     if(!runtime.NATIVE||!account)return;
-    const poll=()=>runtime.native<{tasks:runtime.NativeTask[]}>('listDownloads').then(({tasks})=>{if(current.current?.accountId!==account.accountId)return;setState(s=>JSON.stringify(s.downloads)===JSON.stringify(tasks)?s:{...s,downloads:tasks});}).catch(e=>setError(String(e)));
-    void poll();const id=setInterval(()=>{if(!document.hidden)void poll();},1500);return()=>clearInterval(id);
+    let stopped=false,running=false,again=false;let timer:ReturnType<typeof setTimeout>|undefined;
+    const poll=async()=>{if(stopped||running||document.hidden)return;running=true;clearTimeout(timer);try{
+      const {tasks}=await runtime.native<{tasks:runtime.NativeTask[]}>('listDownloads');
+      if(stopped||current.current?.accountId!==account.accountId)return;
+      setState(s=>JSON.stringify(s.downloads)===JSON.stringify(tasks)?s:{...s,downloads:tasks});
+      if(tasks.some(t=>['running','queued','waiting'].includes(t.status)))timer=setTimeout(poll,1500);
+    }catch(e){if(!stopped)setError(String(e));}finally{running=false;if(again&&!stopped){again=false;clearTimeout(timer);timer=setTimeout(poll,0);}}};
+    void poll();const resume=()=>{if(!document.hidden)void poll();else clearTimeout(timer);};
+    const changed=()=>{if(running)again=true;else void poll();};
+    window.addEventListener('canvas-download-changed',changed);document.addEventListener('visibilitychange',resume);
+    return()=>{stopped=true;clearTimeout(timer);window.removeEventListener('canvas-download-changed',changed);document.removeEventListener('visibilitychange',resume);};
   },[account]);
   async function files(course:Course,force=false){
     const store=cache.current,generation=epoch.current;if(!store)return;
     const key=`files:${course.id}`,cached=store.peek<Course['files']>(key);
     if(cached)setCourses(cs=>cs.map(c=>c.id===course.id?{...c,files:cached,filesLoaded:true}:c));
-    if(!force&&store.isFresh(key,CACHE_TTL.files))return;
+    if(!force&&store.isFresh(key,CACHE_TTL.files))return cached;
     setCourses(cs=>cs.map(c=>c.id===course.id?{...c,fileLoading:true,fileError:undefined}:c));
-    try{const result=await store.get(key,CACHE_TTL.files,()=>runtime.loadFiles(course),force);if(generation===epoch.current)setCourses(cs=>cs.map(c=>c.id===course.id?{...c,files:result,filesLoaded:true,fileLoading:false,fileError:undefined}:c));}
+    try{const result=await store.get(key,CACHE_TTL.files,()=>runtime.loadFiles(course),force);if(generation===epoch.current){setCourses(cs=>cs.map(c=>c.id===course.id?{...c,files:result,filesLoaded:true,fileLoading:false,fileError:undefined}:c));return result;}}
     catch(e){if(generation===epoch.current)setCourses(cs=>cs.map(c=>c.id===course.id?{...c,fileLoading:false,fileError:String(e)}:c));throw e;}
   }
   async function acceptCookie(cookie:string){if(!account)throw new Error('请先连接 Canvas Token');setBusy(true);try{const result=await runtime.acceptExtraCookie(account,cookie);if(current.current?.accountId!==account.accountId)throw new Error('账号已切换，请重新认证');const next={...saved,accounts:saved.accounts.map(a=>a.accountId===account.accountId?result.account:a)};await runtime.saveSettings(next);setAccount(result.account);current.current=result.account;setSaved(next);return result;}finally{setBusy(false);}}
@@ -96,12 +106,12 @@ export function useLiveCanvas(){
   async function videos(course:Course,force=false){
     const store=cache.current,generation=epoch.current;if(!store)return[];const key=`videos:${course.id}`;
     const cached=store.peek<runtime.Recording[]>(key);setRecordings(cached||[]);
-    setBusy(true);try{const result=await store.get(key,CACHE_TTL.recordings,async()=>{await store.get('videoLogin',10*60_000,()=>runtime.api('videoLogin'));return runtime.loadRecordings(course);},force);if(generation===epoch.current)setRecordings(result);return result;}finally{if(generation===epoch.current)setBusy(false);}
+    setBusy(true);try{const result=await store.get(key,CACHE_TTL.recordings,()=>runtime.loadRecordings(course),force);if(generation===epoch.current)setRecordings(result);return result;}finally{if(generation===epoch.current)setBusy(false);}
   }
   async function loadMaterials(recording:runtime.Recording,force=false){const store=cache.current,generation=epoch.current;if(!store)throw Error('请先连接账号');const key=`materials:${recording.source}:${recording.id}`;setMaterials(store.peek(key)||null);const result=await store.get(key,CACHE_TTL.materials,()=>runtime.materialText(recording),force);if(generation===epoch.current)setMaterials(result);return result;}
   function peekMaterials(recording:runtime.Recording){return cache.current?.peek<Awaited<ReturnType<typeof runtime.materialText>>>(`materials:${recording.source}:${recording.id}`)||null;}
   async function logout(){if(!account)return;epoch.current++;cache.current?.close();cache.current=null;await runtime.native('clearAccount',{accountId:account.accountId});await runtime.clearSession();const next={...saved,currentId:'',accounts:saved.accounts.filter(a=>a.accountId!==account.accountId)};await runtime.saveSettings(next);setSaved(next);setAccount(null);current.current=null;setState(empty());setCourses([]);setRecordings([]);setMaterials(null);setName('尚未连接账号');}
   async function model(config:runtime.AccountConfig){await runtime.restoreSession(config);const next={...saved,accounts:saved.accounts.map(a=>a.accountId===config.accountId?config:a)};await runtime.saveSettings(next);setSaved(next);setAccount(config);current.current=config;}
-  function markSubmission(id:string,receipt:Record<string,any>){confirmed.current.set(id,Date.now());setState(s=>({...s,assignments:s.assignments.map(a=>a.id===id?{...a,submission:receipt.submitted_at?(receipt.late?'late':'submitted'):receipt.workflow_state==='unsubmitted'?'unsubmitted':'unknown',submittedAt:receipt.submitted_at?Date.parse(receipt.submitted_at):undefined,attachments:(receipt.attachments||[]).map((f:Record<string,string>)=>f.display_name||f.filename)}:a)}));}
+  function markSubmission(id:string,receipt:Record<string,any>){confirmed.current.set(id,Date.now());setState(s=>({...s,assignments:s.assignments.map(a=>a.id===id?{...a,submission:receipt.submitted_at?(receipt.late?'late':'submitted'):receipt.workflow_state==='unsubmitted'?'unsubmitted':'unknown',submittedAt:receipt.submitted_at?Date.parse(receipt.submitted_at):undefined,submittedFiles:(receipt.attachments||[]).map((f:Record<string,any>)=>assignmentFile(f)).filter((f:CourseFile|undefined):f is CourseFile=>!!f),attachments:(receipt.attachments||[]).map((f:Record<string,string>)=>f.display_name||f.filename)}:a)}));}
   return {state,setState,courses,account,saved,name,error,setError,busy:busy||progress!==null,progress,refresh,connect,files,login,acceptCookie,videos,recordings,materials,loadMaterials,peekMaterials,logout,model,markSubmission};
 }

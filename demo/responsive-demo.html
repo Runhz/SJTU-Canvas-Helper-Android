@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>系统分屏预览 · Canvas 随行</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#e8ecf2;color:#263248;font:14px system-ui,sans-serif}header{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:12px 18px;background:#fff;border-bottom:1px solid #d9e0eb}header strong{font-size:14px}label{display:flex;align-items:center;gap:10px;flex:1;min-width:200px}input{flex:1;accent-color:#526edc}output{min-width:62px;font-variant-numeric:tabular-nums}button{border:0;background:#edf1ff;color:#405bcc;padding:8px 12px;border-radius:10px;cursor:pointer}main{height:calc(100vh - 65px);padding:12px;overflow:auto}iframe{display:block;height:100%;min-height:320px;max-width:none;margin:0 auto;border:1px solid #d5deed;border-radius:14px;background:#fff;box-shadow:0 8px 30px #23335a10}p{margin:0;font-size:12px;color:#758197}
+</style></head>
+<body><header><strong>系统分屏预览</strong><label>应用宽度<input id="width" aria-label="应用窗口宽度" type="range" min="320" max="1200" value="1000" step="1"/><output id="size">1000 px</output></label><button data-width="400">窄窗口</button><button data-width="700">中等窗口</button><button data-width="1000">宽窗口</button><p>拖动滑块模拟系统分屏。预览内可直接操作。</p></header><main><iframe id="app" title="可调整宽度的 Canvas 随行" src="/layout-demo.html" style="width:1000px"></iframe></main>
+<script type="module">
+const width=document.querySelector('#width'),size=document.querySelector('#size'),frame=document.querySelector('#app');
+const update=()=>{frame.style.width=width.value+'px';size.textContent=width.value+' px';};
+width.addEventListener('input',update);
+for(const button of document.querySelectorAll('[data-width]'))button.addEventListener('click',()=>{width.value=button.dataset.width;update();});
+</script></body></html>

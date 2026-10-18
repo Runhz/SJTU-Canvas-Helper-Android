@@ -34,13 +34,44 @@ import java.util.UUID
 import java.util.concurrent.Executors
 
 internal fun accountHash(id: String): String = MessageDigest.getInstance("MD5").digest(id.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
-internal class TaskDb(context: Context) : SQLiteOpenHelper(context, "downloads.db", null, 1) {
-    override fun onCreate(db: SQLiteDatabase) { db.execSQL("CREATE TABLE tasks(id INTEGER PRIMARY KEY,account TEXT NOT NULL,resource TEXT NOT NULL,name TEXT NOT NULL,path TEXT NOT NULL,course TEXT NOT NULL,cancelled INTEGER NOT NULL DEFAULT 0)") }
-    override fun onUpgrade(db: SQLiteDatabase, old: Int, new: Int) { error("Unsupported database upgrade") }
+internal class TaskDb(context: Context) : SQLiteOpenHelper(context, "downloads.db", null, 2) {
+    override fun onCreate(db: SQLiteDatabase) { db.execSQL("CREATE TABLE tasks(id INTEGER PRIMARY KEY,account TEXT NOT NULL,resource TEXT NOT NULL,name TEXT NOT NULL,path TEXT NOT NULL,course TEXT NOT NULL,cancelled INTEGER NOT NULL DEFAULT 0,version TEXT NOT NULL DEFAULT '')") }
+    override fun onUpgrade(db: SQLiteDatabase, old: Int, new: Int) { if(old<2)db.execSQL("ALTER TABLE tasks ADD COLUMN version TEXT NOT NULL DEFAULT ''") }
 }
 
 @TauriPlugin
 class CanvasPlugin(private val activity: Activity): Plugin(activity) {
+    @Command fun notifyAiComplete(invoke:Invoke)=guarded(invoke){AiReplyNotifications.show(activity,data(invoke));invoke.resolve()}
+    private val documents by lazy{StudyDocuments(activity)}
+    @Command fun embedDocument(invoke:Invoke){val args=data(invoke);activity.runOnUiThread{guarded(invoke){(activity as MainActivity).embeddedDocument.open(args);invoke.resolve()}}}
+    @Command fun documentPreviewControl(invoke:Invoke){val args=data(invoke);activity.runOnUiThread{guarded(invoke){resolve(invoke,(activity as MainActivity).embeddedDocument.control(args))}}}
+    @Command fun captureDocument(invoke:Invoke){val args=data(invoke);activity.runOnUiThread{guarded(invoke){(activity as MainActivity).embeddedDocument.capture(args.getString("id")){result,error->if(result!=null)resolve(invoke,result)else invoke.reject(error?:"截图未完成")}}}}
+    @Command fun captureSlideImage(invoke:Invoke){
+        val args=data(invoke);val scope=args.getString("scope");val active=SecureStore(activity).activeAccount();val parts=JSONArray(scope)
+        if(active==null||parts.length()!=2||parts.getString(0)!=active.optString("accountId")||parts.getString(1)!=active.optString("identityId")){invoke.reject("请先连接当前账号");return}
+        SlideImages.executor.execute{try{val image=SlideImages.load(args.getString("url"),1600);try{val output=java.io.ByteArrayOutputStream();image.compress(android.graphics.Bitmap.CompressFormat.JPEG,90,output);activity.runOnUiThread{val current=SecureStore(activity).activeAccount();if(current?.optString("accountId")==active.optString("accountId")&&current.optString("identityId")==active.optString("identityId"))resolve(invoke,JSONObject().put("image","data:image/jpeg;base64,"+Base64.encodeToString(output.toByteArray(),Base64.NO_WRAP)))else invoke.reject("账号已切换，请重新提问")}}finally{image.recycle()}}catch(_:Exception){invoke.reject("课件图片暂时无法读取，请重试")}}
+    }
+    @Command fun documentInfo(invoke:Invoke)=documents.command("documentInfo",invoke)
+    @Command fun documentPage(invoke:Invoke)=documents.command("documentPage",invoke)
+    @Command fun documentChunk(invoke:Invoke)=documents.command("documentChunk",invoke)
+    @Command fun documentPackage(invoke:Invoke)=documents.command("documentPackage",invoke)
+    @Command fun documentMedia(invoke:Invoke)=documents.command("documentMedia",invoke)
+    @Command fun openPreparedDocument(invoke:Invoke)=documents.command("openPreparedDocument",invoke)
+    @Command fun openDocumentPreview(invoke:Invoke){activity.runOnUiThread{guarded(invoke){
+        val args=data(invoke);val active=SecureStore(activity).activeAccount()?:error("No account");val parts=JSONArray(args.getString("scope"))
+        require(parts.length()==2&&parts.getString(0)==active.optString("accountId")&&parts.getString(1)==active.optString("identityId"))
+        val uri=Uri.parse(args.getString("url"));require(DocumentPolicy.allowedUrl(uri.toString(),true))
+        val intent=Intent(activity,DocumentPreviewActivity::class.java).putExtra("url",uri.toString()).putExtra("scope",args.getString("scope")).putExtra("title",args.optString("title","文件预览"))
+        if(args.optString("downloadPath").isNotBlank()){val file=ownedFile(args.getString("downloadPath"));intent.putExtra("downloadPath",file.path).putExtra("mime",args.optString("mime","application/octet-stream"))}
+        activity.startActivity(intent);invoke.resolve()
+    }}}
+    private val study by lazy { StudyAttachments(activity) }
+    @Command fun studyPrepared(invoke:Invoke)=study.command("studyPrepared",invoke)
+    @Command fun studyRead(invoke:Invoke)=study.command("studyRead",invoke)
+    @Command fun studyForget(invoke:Invoke)=study.command("studyForget",invoke)
+    @Command fun studyClear(invoke:Invoke)=study.command("studyClear",invoke)
+    @Command fun studySave(invoke:Invoke)=study.command("studySave",invoke)
+    @Command fun studyRegisterDownload(invoke:Invoke)=study.command("studyRegisterDownload",invoke)
     private val io = Executors.newSingleThreadExecutor()
     private val db by lazy { TaskDb(activity) }
     private val manager get() = activity.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
@@ -56,13 +87,24 @@ class CanvasPlugin(private val activity: Activity): Plugin(activity) {
         require(file.isFile)
         return file
     }
-    @Command fun loadSettings(invoke: Invoke) = guarded(invoke) { resolve(invoke, SecureStore(activity).settings()) }
+    private fun officialCookie()=CookieManager.getInstance().getCookie("https://jaccount.sjtu.edu.cn")?.split(';')?.map{it.trim()}?.firstOrNull{it.startsWith("JAAuthCookie=")}
+    @Command fun loadSettings(invoke: Invoke) = guarded(invoke) {
+        val store=SecureStore(activity);val settings=store.settings();val id=settings.optString("currentId")
+        // Only reuse the WebView belonging to the account whose official login completed here.
+        if(id.isNotBlank()&&store.read("web-login-account")==id){val cookie=officialCookie();if(!cookie.isNullOrBlank()){val accounts=settings.optJSONArray("accounts");if(accounts!=null)for(i in 0 until accounts.length()){val row=accounts.optJSONObject(i);if(row?.optString("accountId")==id)row.put("cookie",cookie)};store.write("settings",settings.toString())}}
+        resolve(invoke,settings)
+    }
+    @Command fun resumeWebSession(invoke:Invoke)=guarded(invoke){
+        val store=SecureStore(activity);val id=data(invoke).getString("accountId");require(id==currentId());val cookies=JSONObject()
+        if(store.read("web-login-account")==id)for(host in listOf("jaccount.sjtu.edu.cn","my.sjtu.edu.cn","oc.sjtu.edu.cn","v.sjtu.edu.cn","courses.sjtu.edu.cn")){val url="https://$host/";val cookie=CookieManager.getInstance().getCookie(url);if(!cookie.isNullOrBlank())cookies.put(url,cookie)}
+        resolve(invoke,JSONObject().put("webCookies",cookies))
+    }
     @Command fun saveSettings(invoke: Invoke) = guarded(invoke) {
         val value = data(invoke).getJSONObject("settings")
         require(value.has("accounts") && value.has("currentId"))
         SecureStore(activity).write("settings",value.toString()); invoke.resolve()
     }
-    @Command fun deviceInfo(invoke: Invoke) = guarded(invoke) { resolve(invoke,JSONObject().put("android",Build.VERSION.SDK_INT).put("model",Build.MODEL).put("notifications",Build.VERSION.SDK_INT<33 || activity.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED)) }
+    @Command fun deviceInfo(invoke: Invoke) = guarded(invoke) { resolve(invoke,JSONObject().put("android",Build.VERSION.SDK_INT).put("model",Build.MODEL).put("smallestWidthDp",activity.resources.configuration.smallestScreenWidthDp).put("landscape",activity.resources.configuration.orientation==android.content.res.Configuration.ORIENTATION_LANDSCAPE).put("notifications",Build.VERSION.SDK_INT<33 || activity.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED)) }
     @Command fun startMotion(invoke: Invoke) { activity.runOnUiThread { guarded(invoke) { resolve(invoke,JSONObject().put("available",(activity as MainActivity).waterMotion.start())) } } }
     @Command fun stopMotion(invoke: Invoke) { activity.runOnUiThread { (activity as MainActivity).waterMotion.stop(); invoke.resolve() } }
     @Command fun motionState(invoke: Invoke) { activity.runOnUiThread { resolve(invoke,(activity as MainActivity).waterMotion.snapshot()) } }
@@ -142,14 +184,21 @@ class CanvasPlugin(private val activity: Activity): Plugin(activity) {
     @Command fun enqueueDownload(invoke:Invoke)=guarded(invoke){
         val args=data(invoke);val account=currentId();require(args.getString("accountId")==account)
         val resource=args.getString("resourceId");val course=args.optString("courseId")
-        db.readableDatabase.rawQuery("SELECT id FROM tasks WHERE account=? AND resource=? AND course=? AND cancelled=0",arrayOf(account,resource,course)).use { cursor -> while(cursor.moveToNext()){val id=cursor.getLong(0);manager.query(DownloadManager.Query().setFilterById(id))?.use { q -> if(q.moveToFirst() && q.getInt(q.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))!=DownloadManager.STATUS_FAILED){resolve(invoke,JSONObject().put("id",id).put("existing",true));return@guarded} }} }
+        val version=args.optString("studyVersion")
+        db.readableDatabase.rawQuery("SELECT id,path,version FROM tasks WHERE account=? AND resource=? AND course=? AND cancelled=0",arrayOf(account,resource,course)).use { cursor -> while(cursor.moveToNext()){val id=cursor.getLong(0);manager.query(DownloadManager.Query().setFilterById(id))?.use { q -> if(q.moveToFirst()){
+            val status=q.getInt(q.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));val file=File(cursor.getString(1))
+            val sameVersion=version.isEmpty()||cursor.getString(2)==version
+            val freshCompleted=status==DownloadManager.STATUS_SUCCESSFUL&&args.optLong("requiredAfter",0)>0&&q.getLong(q.getColumnIndexOrThrow(DownloadManager.COLUMN_LAST_MODIFIED_TIMESTAMP))>=args.getLong("requiredAfter")
+            val sizeOk=!args.has("expectedSize")||file.length()==args.getLong("expectedSize")
+            if(status!=DownloadManager.STATUS_FAILED&&(sameVersion||freshCompleted)&&(status!=DownloadManager.STATUS_SUCCESSFUL||file.isFile&&sizeOk)){resolve(invoke,JSONObject().put("id",id).put("existing",true));return@guarded}
+        }}} }
         val url=Uri.parse(args.getString("url"));require(url.scheme=="https")
         val name=args.getString("name").replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"),"_").take(180).ifBlank{"课程资料"}
         val relative="${accountHash(account)}/${UUID.randomUUID()}/$name"
         val request=DownloadManager.Request(url).setTitle(name).setDescription("Canvas 随行 · 课程资料").setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED).setDestinationInExternalFilesDir(activity,Environment.DIRECTORY_DOWNLOADS,relative)
         args.optJSONObject("headers")?.let { headers -> for(key in headers.keys()) request.addRequestHeader(key,headers.getString(key)) }
         val id=manager.enqueue(request)
-        val values=ContentValues().apply{put("id",id);put("account",account);put("resource",resource);put("name",name);put("path",File(activity.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),relative).path);put("course",course)}
+        val values=ContentValues().apply{put("id",id);put("account",account);put("resource",resource);put("name",name);put("path",File(activity.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),relative).path);put("course",course);put("version",version)}
         try{db.writableDatabase.insertOrThrow("tasks",null,values)}catch(e:Exception){manager.remove(id);throw e}
         resolve(invoke,JSONObject().put("id",id))
     }
@@ -167,6 +216,14 @@ class CanvasPlugin(private val activity: Activity): Plugin(activity) {
         resolve(invoke,JSONObject().put("tasks",out))
     }
     @Command fun cancelDownload(invoke:Invoke)=guarded(invoke){val id=data(invoke).getLong("id");val account=currentId();db.writableDatabase.update("tasks",ContentValues().apply{put("cancelled",1)},"id=? AND account=?",arrayOf(id.toString(),account)).let{if(it>0)manager.remove(id)};invoke.resolve()}
+    @Command fun deleteDownload(invoke:Invoke)=guarded(invoke){
+        val id=data(invoke).getLong("id");val account=currentId();var path=""
+        db.readableDatabase.rawQuery("SELECT path FROM tasks WHERE id=? AND account=?",arrayOf(id.toString(),account)).use{if(it.moveToFirst())path=it.getString(0)}
+        require(path.isNotBlank())
+        manager.remove(id)
+        if(path.isNotBlank()){val file=File(path).canonicalFile;val root=File(activity.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),accountHash(account)).canonicalFile;require(file.path.startsWith(root.path+File.separator));if(file.isFile)file.delete();file.parentFile?.let{parent->if(parent.listFiles()?.isEmpty()==true)parent.delete()}}
+        db.writableDatabase.delete("tasks","id=? AND account=?",arrayOf(id.toString(),account));invoke.resolve()
+    }
     @Command fun clearAccount(invoke:Invoke)=guarded(invoke){
         val account=data(invoke).getString("accountId")
         db.readableDatabase.rawQuery("SELECT id FROM tasks WHERE account=? AND cancelled=0",arrayOf(account)).use{c->while(c.moveToNext()){val id=c.getLong(0);manager.query(DownloadManager.Query().setFilterById(id))?.use{q->if(q.moveToFirst()&&q.getInt(q.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))!=DownloadManager.STATUS_SUCCESSFUL)manager.remove(id)}}}
@@ -182,7 +239,9 @@ class CanvasPlugin(private val activity: Activity): Plugin(activity) {
         val url=data(invoke).optString("url","https://my.sjtu.edu.cn/ui/appmyinfo")
         val uri=Uri.parse(url)
         require(url=="https://my.sjtu.edu.cn/ui/appmyinfo" || (uri.scheme=="https" && uri.host=="jaccount.sjtu.edu.cn" && uri.path=="/jaccount/confirmscancode"))
-        CookieManager.getInstance().removeAllCookies { if(cached.isNotBlank())CookieManager.getInstance().setCookie("https://jaccount.sjtu.edu.cn",cached);startActivityForResult(invoke,Intent(activity,LoginActivity::class.java).putExtra("accountId",account).putExtra("url",url),"loginFinished") }
+        val cookies=CookieManager.getInstance();val store=SecureStore(activity)
+        val open={if(officialCookie().isNullOrBlank()&&cached.isNotBlank())cookies.setCookie("https://jaccount.sjtu.edu.cn",cached);startActivityForResult(invoke,Intent(activity,LoginActivity::class.java).putExtra("accountId",account).putExtra("url",url),"loginFinished")}
+        if(store.read("web-login-account")==account)open()else cookies.removeAllCookies{open()}
     }
     @Command fun saveQrImage(invoke:Invoke)=guarded(invoke){
         val bytes=Base64.decode(data(invoke).getString("base64"),Base64.DEFAULT)
@@ -196,7 +255,7 @@ class CanvasPlugin(private val activity: Activity): Plugin(activity) {
         val launch=activity.packageManager.getLaunchIntentForPackage("com.tencent.mm")
         if(launch==null)invoke.reject("未找到微信，可使用官方网页登录")else{activity.startActivity(launch);invoke.resolve()}
     }
-    @ActivityCallback fun loginFinished(invoke:Invoke,result:ActivityResult){if(result.resultCode==Activity.RESULT_OK)resolve(invoke,JSONObject().put("cookie",result.data?.getStringExtra("cookie")?:""))else invoke.reject("登录已取消")}
+    @ActivityCallback fun loginFinished(invoke:Invoke,result:ActivityResult){if(result.resultCode==Activity.RESULT_OK){val id=result.data?.getStringExtra("accountId")?:"";if(id!=currentId()){invoke.reject("账号已切换，请重新验证");return};SecureStore(activity).write("web-login-account",id);resolve(invoke,JSONObject().put("cookie",result.data?.getStringExtra("cookie")?:""))}else invoke.reject("登录已取消")}
     @Command fun openPlayer(invoke:Invoke)=guarded(invoke){val args=data(invoke);args.put("accountId",currentId());PlayerActivity.pending=args;activity.startActivity(Intent(activity,PlayerActivity::class.java));invoke.resolve()}
     @Command fun embedPlayer(invoke:Invoke){val args=data(invoke);activity.runOnUiThread{guarded(invoke){(activity as MainActivity).embeddedPlayer.open(args,currentId());invoke.resolve()}}}
     @Command fun playerControl(invoke:Invoke){val args=data(invoke);activity.runOnUiThread{guarded(invoke){(activity as MainActivity).embeddedPlayer.control(args);invoke.resolve()}}}

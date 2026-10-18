@@ -1,0 +1,3 @@
+export interface TimedSlide {timeMs:number|null;text:string;image?:string;key:string}
+export function normalizeSlides(slides:Record<string,any>[]):TimedSlide[]{return slides.map((s,i)=>{const raw=String(s.createSec??'').trim(),time=raw!==''?Number(raw):NaN;return{key:String(i),timeMs:Number.isFinite(time)&&time>=0?time*1000:null,text:String(s.ocrText||(s.ocr||[]).map((w:{word:string})=>w.word).join(' ')),image:typeof s.pptImgUrl==='string'&&/^https:\/\//.test(s.pptImgUrl)?s.pptImgUrl:undefined};}).sort((a,b)=>(a.timeMs??Infinity)-(b.timeMs??Infinity));}
+export function slideAt(slides:TimedSlide[],positionMs:number){let index=-1;for(let i=0;i<slides.length;i++){if(slides[i].timeMs===null)continue;if(slides[i].timeMs!<=positionMs)index=i;else break;}return index;}

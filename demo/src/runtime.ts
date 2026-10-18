@@ -1,6 +1,8 @@
+import {assignmentFile,requirementFiles} from './assignmentFiles';
 import { Channel, invoke, isTauri } from '@tauri-apps/api/core';
 import { courses as demoCourses, HOUR, type Assignment, type Course, type CourseFile, type ReminderSettings } from './domain';
 import {subtitleTime,type SubtitleLine} from './study';
+import {VideoSession} from './videoSession';
 
 export const NATIVE = isTauri();
 export const NO_DEADLINE = 8_640_000_000_000_000;
@@ -10,8 +12,24 @@ export interface SavedSettings { currentId: string; accounts: AccountConfig[] }
 export interface ImportedFile { name: string; path: string; size: number; mime: string }
 export interface NativeTask { id:string; name:string; courseId:string; resourceId:string; path:string; status:'running'|'queued'|'waiting'|'completed'|'failed'|'cancelled'; progress:number; reason:number }
 export interface Recording { id:string; title:string; courseId:string; source:'canvas'|'videoSpace'|'legacy'; materialsId:number; raw:Record<string,unknown> }
-export const native = <T=unknown>(method:string,args:Record<string,unknown>={}) => invoke<T>('native_call',{method,args});
-export const api = <T=unknown>(action:string,args:Record<string,unknown>={}) => invoke<T>('canvas_request',{action,args});
+let downloadSnapshot:NativeTask[]=[];
+const downloadSubscribers=new Set<(tasks:NativeTask[])=>void>();
+export const currentDownloads=()=>downloadSnapshot;
+export function subscribeDownloads(listener:(tasks:NativeTask[])=>void){downloadSubscribers.add(listener);return()=>{downloadSubscribers.delete(listener);};}
+export const native = async<T=unknown>(method:string,args:Record<string,unknown>={}):Promise<T> => {
+  const result=await invoke<T>('native_call',{method,args});
+  if(method==='listDownloads'){downloadSnapshot=(result as {tasks:NativeTask[]}).tasks||[];downloadSubscribers.forEach(listener=>listener(downloadSnapshot));}
+  if(method==='enqueueDownload'||method==='cancelDownload'||method==='deleteDownload')window.dispatchEvent(new Event('canvas-download-changed'));
+  return result;
+};
+let sessionReady:Promise<unknown>=Promise.resolve();
+const videoSession=new VideoSession(()=>invoke('canvas_request',{action:'videoLogin',args:{}}));
+const videoActions=new Set(['videos','videoInfo','videoSpaceCourses','videoSpaceVideos','subtitles','slides']);
+export const api = async<T=unknown>(action:string,args:Record<string,unknown>={}):Promise<T> => {
+  await sessionReady;
+  const run=()=>invoke<T>('canvas_request',{action,args});
+  return videoActions.has(action)?videoSession.request(run):run();
+};
 const text = (html:unknown) => { const doc=new DOMParser().parseFromString(typeof html==='string'?html:'','text/html');return doc.body.textContent||''; };
 const asRecord=(v:unknown):Record<string,any> => v&&typeof v==='object'?v as Record<string,any>:{};
 // Android 10 can ship Chromium 74, before Promise.allSettled; keep native runtime compatible.
@@ -24,11 +42,11 @@ export function normalizeCanvasToken(raw:string){
   if(!/^[A-Za-z0-9_~.\-]{1,4096}$/.test(token))throw new Error('Token 格式不正确，请只粘贴访问令牌，不要包含说明文字');
   return token;
 }
-export async function configure(config:AccountConfig){return invoke<{id:number;name:string}>('configure_session',{config:{...config,token:normalizeCanvasToken(config.token)}});}
-export async function restoreSession(config:AccountConfig){return invoke('restore_session',{config:{...config,token:normalizeCanvasToken(config.token)}});}
+export async function configure(config:AccountConfig){videoSession.reset();const task=invoke<{id:number;name:string}>('configure_session',{config:{...config,token:normalizeCanvasToken(config.token)}});sessionReady=task;return task;}
+export async function restoreSession(config:AccountConfig){videoSession.reset();const task=native<{webCookies?:Record<string,string>}>('resumeWebSession',{accountId:config.accountId}).catch(()=>({webCookies:{}})).then(saved=>invoke('restore_session',{config:{...config,token:normalizeCanvasToken(config.token),webCookies:saved.webCookies||{}}}));sessionReady=task;return task;}
 export async function savedSettings(){return native<SavedSettings>('loadSettings');}
 export async function saveSettings(settings:SavedSettings){await native('saveSettings',{settings});}
-export async function clearSession(){await invoke('clear_session');}
+export async function clearSession(){videoSession.reset();sessionReady=invoke('clear_session');await sessionReady;}
 export async function startQrLogin(){return invoke<{uuid:string;websocketUrl:string}>('start_qr_login');}
 export async function finishQrLogin(uuid:string){return invoke<{cookie:string}>('finish_qr_login',{uuid});}
 export async function invokeCancelQr(uuid?:string){await invoke('cancel_qr_login',{uuid:uuid||null});}
@@ -55,11 +73,11 @@ export function mapCourse(c:Record<string,any>,i=0):Course{
 export function mapAssignment(courseId:string,a:Record<string,any>):Assignment{
   const sub=asRecord(a.submission);
   const submitted=Boolean(sub.submitted_at)&&sub.workflow_state!=='unsubmitted';
-  return {id:`${courseId}:${a.id}`,courseId,title:a.name||'未命名作业',description:text(a.description)||'这项作业没有文字说明，请在课程平台核对完整要求。',dueAt:a.due_at?Date.parse(a.due_at):NO_DEADLINE,submission:submitted?(sub.late?'late':'submitted'):a.submission?'unsubmitted':'unknown',submittedAt:sub.submitted_at?Date.parse(sub.submitted_at):undefined,attachments:sub.attachments?.map((f:Record<string,any>)=>f.display_name||f.filename),allowedExtensions:a.allowed_extensions||[],uploadAllowed:a.submission_types?.includes('online_upload')===true,locked:a.locked_for_user===true,htmlUrl:a.html_url};
+  return {requirementFiles:requirementFiles(a.description,a.attachments),submittedFiles:(Array.isArray(sub.attachments)?sub.attachments:[]).map((f:Record<string,any>)=>assignmentFile(f)).filter((f):f is NonNullable<typeof f>=>!!f),id:`${courseId}:${a.id}`,courseId,title:a.name||'未命名作业',description:text(a.description)||'这项作业没有文字说明，请在课程平台核对完整要求。',dueAt:a.due_at?Date.parse(a.due_at):NO_DEADLINE,submission:submitted?(sub.late?'late':'submitted'):a.submission?'unsubmitted':'unknown',submittedAt:sub.submitted_at?Date.parse(sub.submitted_at):undefined,attachments:sub.attachments?.map((f:Record<string,any>)=>f.display_name||f.filename),allowedExtensions:a.allowed_extensions||[],uploadAllowed:a.submission_types?.includes('online_upload')===true,locked:a.locked_for_user===true,htmlUrl:a.html_url};
 }
 export async function loadFiles(course:Course):Promise<CourseFile[]>{
   const files=await api<Record<string,any>[]>('files',{courseId:Number(course.id)});
-  return files.map(f=>({id:String(f.id),name:f.display_name||f.filename,size:f.size>1048576?`${(f.size/1048576).toFixed(1)} MB`:`${Math.ceil((f.size||0)/1024)} KB`,kind:(f.display_name||f.filename||'').split('.').pop().toUpperCase(),updated:f.updated_at?new Date(f.updated_at).toLocaleDateString('zh-CN'):'',raw:{id:f.id,size:f.size}}));
+  return files.map(f=>({id:String(f.id),name:f.display_name||f.filename,size:f.size>1048576?`${(f.size/1048576).toFixed(1)} MB`:`${Math.ceil((f.size||0)/1024)} KB`,kind:(f.display_name||f.filename||'').split('.').pop().toUpperCase(),updated:f.updated_at?new Date(f.updated_at).toLocaleDateString('zh-CN'):'',raw:{id:f.id,size:f.size,updatedAt:f.updated_at,mime:f['content-type']}}));
 }
 export async function enqueueFile(file:CourseFile,courseId:string,accountId:string){
   const plan=await api<Record<string,unknown>>('downloadPlan',{file:file.raw});
@@ -110,6 +128,7 @@ export async function ai(mode:string,args:Record<string,unknown>,question:string
   return invoke<string>('ai_chat',{mode,args,messages:[...history,{role:'user',content:question}],onChunk:channel,onPhase:phases,requestId:options.requestId||null});
 }
 export const cancelAi=(requestId:string)=>invoke('cancel_ai',{requestId});
+export function readCourseFile(fileId:string,requestId:string,onPhase:(text:string)=>void){const phases=new Channel<string>();phases.onmessage=onPhase;return invoke<{name:string;text:string}>('read_course_file',{fileId:Number(fileId),requestId,onPhase:phases});}
 export const modelList=(url:string,key:string)=>invoke<string[]>('list_models',{url,key});
 export interface ModelCapabilities { contextTokens:number|null;vision:boolean|null;maxFileBytes:number|null;inputTypes:string[] }
 export const modelCapabilities=(config:AccountConfig)=>invoke<ModelCapabilities>('model_capabilities',{url:config.modelUrl,key:config.modelKey,model:config.modelName});

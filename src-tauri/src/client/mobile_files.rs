@@ -5,6 +5,9 @@ use std::path::Path;
 use tokio::io::AsyncWriteExt;
 use md5::{Digest,Md5};
 type Result<T>=std::result::Result<T,String>;
+// A cancelled caller must not let another expensive parser run beside its
+// still-running blocking task. The task itself retains this permit.
+static TEXT_PARSERS:tokio::sync::Semaphore=tokio::sync::Semaphore::const_new(1);
 impl Client{
     pub async fn mobile_file_text(&self,id:i64,token:&str,root:&Path,max_mb:u64,on_phase:&mut(dyn FnMut(String)+Send))->Result<(String,String)>{
         if id<=0{return Err("文件标识无效".into())}
@@ -31,7 +34,9 @@ impl Client{
         }
         on_phase("正在提取课件正文、幻灯片与备注…".into());
         let name=file.display_name.clone();let path=binary.clone();
+        let permit=TEXT_PARSERS.acquire().await.map_err(|_|"课件读取队列已关闭")?;
         let text=tokio::task::spawn_blocking(move||{
+            let _permit=permit;
             let bytes=std::fs::read(path).map_err(|_|"课件缓存读取失败")?;
             let ext=Path::new(&name).extension().and_then(|s|s.to_str()).unwrap_or("").to_ascii_lowercase();
             let reader=super::file_parser::new_generic_file_reader();

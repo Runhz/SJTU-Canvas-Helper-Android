@@ -10,8 +10,10 @@ import kotlin.math.max
 class MainActivity : TauriActivity() {
   val embeddedPlayer by lazy { EmbeddedPlayer(this) }
   val waterMotion by lazy { WaterMotion(this) }
-  override fun onPause(){waterMotion.stop();embeddedPlayer.pause();super.onPause()}
-  override fun onDestroy(){embeddedPlayer.close();super.onDestroy()}
+  val embeddedDocument by lazy { EmbeddedDocument(this) }
+  override fun onResume(){super.onResume();embeddedDocument.resume()}
+  override fun onPause(){waterMotion.stop();embeddedPlayer.pause();embeddedDocument.pause();super.onPause()}
+  override fun onDestroy(){embeddedDocument.close();embeddedPlayer.close();super.onDestroy()}
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)

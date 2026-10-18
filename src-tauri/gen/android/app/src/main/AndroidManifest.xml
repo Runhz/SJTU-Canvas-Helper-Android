@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <queries><package android:name="com.tencent.mm" /></queries>
 
@@ -11,12 +12,14 @@
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:theme="@style/Theme.sjtu_canvas_helper"
         android:usesCleartextTraffic="${usesCleartextTraffic}">
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
             android:launchMode="singleTask"
+            android:resizeableActivity="true"
             android:label="@string/main_activity_title"
             android:name=".MainActivity"
             android:exported="true">
@@ -29,6 +32,7 @@
         </activity>
 
         <activity android:name=".LoginActivity" android:exported="false" />
+        <activity android:name=".DocumentPreviewActivity" android:exported="false" android:resizeableActivity="true" android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|screenLayout|uiMode" />
         <activity android:name=".PlayerActivity" android:exported="false" />
         <receiver android:name=".ReminderReceiver" android:exported="false" />
         <receiver android:name=".CalendarReminderReceiver" android:exported="false" />

@@ -1,10 +1,12 @@
-import {afterEach,describe,expect,it,vi} from 'vitest';
+import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {act,cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 vi.mock('./runtime',()=>({NATIVE:true,ai:vi.fn(),cancelAi:vi.fn().mockResolvedValue(undefined)}));
 import * as runtime from './runtime';
+import {activateChatScope} from './chatSession';
+beforeEach(()=>activateChatScope('preview'));
 import {AiChat} from './AiChat';
 import {RichAnswer,normalizeMath} from './RichAnswer';
-afterEach(()=>{cleanup();vi.clearAllMocks()});
+afterEach(()=>{cleanup();activateChatScope('cleanup');vi.clearAllMocks()});
 describe('回答与公式显示',()=>{
   it('回答尚未结束时就显示已收到的文字',async()=>{
     let resolve!:(s:string)=>void;let emit!:(s:string)=>void;

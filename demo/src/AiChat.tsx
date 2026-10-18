@@ -1,97 +1,100 @@
-import {useEffect,useRef,useState} from 'react';
-import {ArrowUp,Square,Sparkles,RefreshCw,LoaderCircle,Settings2,History,Plus,ArrowLeft,Trash2,Search} from 'lucide-react';
+import {ChatWindow} from './ChatWindow';
+import {ConversationNote} from './StudyNotes';
+import {useEffect,useRef,useState,useCallback} from 'react';
+import {createPortal} from 'react-dom';
+import {ArrowUp,Square,Sparkles,RefreshCw,LoaderCircle,Settings2,History,Plus,ArrowLeft,Trash2,Search,Quote,Pin,X,Star,Check,Bookmark,Play,SlidersHorizontal,Paperclip,Ellipsis,Maximize2,Minimize2,Image as ImageIcon} from 'lucide-react';
 import * as runtime from './runtime';
 import {RichAnswer} from './RichAnswer';
 import {ChoicePicker} from './ChoicePicker';
 import {Modal} from './Modal';
+import {ImageCropper} from './ImageCropper';
 import {deleteConversation,listConversations,newConversation,saveConversation,savedPayload,sourceKey,type AiPayload,type Conversation} from './chatHistory';
+import {chatJob,sourceJob,subscribeChat,startChat,stopChat,patchChat,forgetChat,flushChats,markChatRead,viewChat} from './chatSession';
+import {loadPresets,savePresets,type AiPreset,type StudyTurn} from './studyAssist';
+import {subtitleTime} from './study';
+import {useStudyAi} from './StudyAiHub';
 import './chatHistory.css';
+import './studyChat.css';
 
-export function AiChat({context,payload,modelName,onTime,onConfigure,storageScope,open=true,onClose}:{context:string;payload:AiPayload;modelName?:string;onTime:(href:string,payload?:AiPayload)=>void;onConfigure:()=>void;storageScope?:string;open?:boolean;onClose?:()=>void}){
-  const [conversation,setConversation]=useState(()=>newConversation(storageScope||'preview',context,payload));
-  const current=useRef(conversation);current.current=conversation;
-  const [phase,setPhase]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(!!storageScope);
-  const [showHistory,setShowHistory]=useState(payload.args.history===true),[records,setRecords]=useState<Conversation[]>([]),[storageError,setStorageError]=useState(''),[confirmDelete,setConfirmDelete]=useState('');
-  const [historyQuery,setHistoryQuery]=useState('');
-  const active=useRef(''),mounted=useRef(true),received=useRef(''),flush=useRef<ReturnType<typeof setTimeout>>(),saveTimer=useRef<ReturnType<typeof setTimeout>>(),lastQuestion=useRef(''),messages=useRef<HTMLDivElement>(null),stick=useRef(true),initialized=useRef(false),loadGeneration=useRef(0);
-  const demoStopped=useRef(false),pendingMessages=useRef<runtime.ChatMessage[]>([]);
-  function persist(immediate=false){
-    if(!storageScope)return;
-    const save=()=>{saveTimer.current=undefined;const row=current.current;if(!row.messages.length&&!row.draft)return;void saveConversation(row).then(()=>{if(mounted.current)setStorageError('');}).catch(()=>{if(mounted.current)setStorageError('对话暂未保存，请检查设备存储空间。');});};
-    if(immediate){clearTimeout(saveTimer.current);save();}else if(!saveTimer.current)saveTimer.current=setTimeout(save,500);
+export function AiChat({context,payload,modelName,onTime,onConfigure,storageScope,open=true,onClose,onPlayback,docked=false}:{context:string;payload:AiPayload;modelName?:string;onTime:(href:string,payload?:AiPayload)=>void;onConfigure:()=>void;storageScope?:string;open?:boolean;onClose?:()=>void;onPlayback?:(payload:AiPayload,positionMs:number,play:boolean)=>void;docked?:boolean}){
+  const study=useStudyAi(),scope=storageScope||'preview';
+  const [conversation,setConversation]=useState(()=>newConversation(scope,context,payload)),[loading,setLoading]=useState(!!storageScope),[showHistory,setShowHistory]=useState(payload.args.history===true),[records,setRecords]=useState<Conversation[]>([]),[historyQuery,setHistoryQuery]=useState(''),[confirmDelete,setConfirmDelete]=useState(''),[error,setError]=useState(''),[storageError,setStorageError]=useState('');
+  const [presets,setPresets]=useState(()=>loadPresets(scope)),[note,setNote]=useState(false),[settings,setSettings]=useState(false),[crop,setCrop]=useState(false),[selectionPrompt,setSelectionPrompt]=useState<{text:string;turn?:StudyTurn;left:number;top:number}>(),[quote,setQuote]=useState<{text:string;turn?:StudyTurn}>(),[expandedInput,setExpandedInput]=useState(false),[,renderRevision]=useState(0);
+  const current=useRef(conversation),mounted=useRef(true),generation=useRef(0),lastIntent=useRef(''),composer=useRef<HTMLTextAreaElement>(null),messages=useRef<HTMLDivElement|null>(null),stick=useRef(true),scrollPosition=useRef(0),saveTimer=useRef<ReturnType<typeof setTimeout>>();current.current=conversation;
+  const messageNode=useCallback((element:HTMLDivElement|null)=>{if(!element&&messages.current)scrollPosition.current=messages.current.scrollTop;messages.current=element;if(element)element.scrollTop=stick.current?element.scrollHeight:scrollPosition.current},[]);
+  const job=chatJob(conversation.id),busy=job?.busy===true;
+  function inspectSelection(){const selected=window.getSelection();if(!selected||!selected.rangeCount||selected.isCollapsed||!messages.current?.contains(selected.anchorNode)||!messages.current.contains(selected.focusNode)||selected.toString().trim().length<2){setSelectionPrompt(undefined);return}
+    const node=selected.anchorNode?.nodeType===1?selected.anchorNode as Element:selected.anchorNode?.parentElement,article=node?.closest('[data-message-index]'),index=Number(article?.getAttribute('data-message-index'));
+    const turn=current.current.turns?.find(t=>t.messageIndex===index)||[...(current.current.turns||[])].reverse().find(t=>t.messageIndex<index);
+    const bounds=selected.getRangeAt(0).getBoundingClientRect();setSelectionPrompt({text:selected.toString().trim().slice(0,1500),turn,left:Math.max(8,Math.min(innerWidth-122,bounds.left)),top:Math.max(8,Math.min((window.visualViewport?.height||innerHeight)-52,bounds.bottom+8))});
   }
-  function update(change:(row:Conversation)=>Conversation,immediate=false){const row=change(current.current);current.current={...row,updatedAt:Date.now()};setConversation(current.current);persist(immediate);}
-  function keepPartial(){
-    if(active.current&&received.current)update(row=>({...row,messages:[...pendingMessages.current,{role:'assistant',content:received.current}],interrupted:true}),true);
-    else persist(true);
+  useEffect(()=>{setSelectionPrompt(undefined);if(!open||note||settings||crop||showHistory||expandedInput)return;let timer:ReturnType<typeof setTimeout>|undefined;const changed=()=>{clearTimeout(timer);timer=setTimeout(inspectSelection,50)};document.addEventListener('selectionchange',changed);return()=>{clearTimeout(timer);document.removeEventListener('selectionchange',changed)}},[open,note,settings,crop,showHistory,expandedInput,conversation.id]);
+
+  function persist(now=false){if(!storageScope)return;const save=()=>{saveTimer.current=undefined;if(!current.current.messages.length&&!current.current.draft&&!current.current.payload.args.screenshot)return;void saveConversation(current.current).then(()=>{if(mounted.current)setStorageError('')}).catch(()=>{if(mounted.current)setStorageError('对话暂未保存，请检查可用空间')})};if(now){clearTimeout(saveTimer.current);save()}else if(!saveTimer.current)saveTimer.current=setTimeout(save,500)}
+  function update(change:(row:Conversation)=>Conversation,now=false){const next={...change(current.current),updatedAt:Date.now()};current.current=patchChat(next);setConversation(current.current);if(!chatJob(next.id))persist(now)}
+  function select(row:Conversation){persist(true);const next=chatJob(row.id)?.row||row;current.current=next;setConversation(next);setShowHistory(false);setQuote(undefined);setError('');setConfirmDelete('');stick.current=true;}
+  function ask(question=current.current.draft){const nextQuestion=question.trim()||((conversation.followUps||[])[0]||'');if(!nextQuestion||chatJob(current.current.id)?.busy||loading)return;setError('');stick.current=true;
+    let row=current.current;if(quote?.turn)row={...row,payload:quote.turn.payload};
+    const q=quote?`${nextQuestion}\n\n我引用的是：「${quote.text}」`:nextQuestion;
+    try{startChat(row,q);setQuote(undefined)}catch(e){setError(String(e).replace(/^Error:\s*/,''))}
   }
-  function stopForSwitch(){keepPartial();demoStopped.current=true;if(active.current&&runtime.NATIVE)void runtime.cancelAi(active.current).catch(()=>{});active.current='';clearTimeout(flush.current);flush.current=undefined;setBusy(false);setError('');}
-  const queue=(chunk:string,id:string)=>{if(active.current!==id||!mounted.current)return;received.current+=chunk;if(!flush.current)flush.current=setTimeout(()=>{flush.current=undefined;if(active.current===id)update(row=>({...row,messages:[...pendingMessages.current,{role:'assistant',content:received.current}],interrupted:true}));},35);};
-  async function ask(question=current.current.draft){
-    if(!question.trim()||active.current||(!initialized.current&&storageScope))return;
-    const id=`chat-${Date.now()}-${Math.random().toString(36).slice(2)}`;active.current=id;demoStopped.current=false;lastQuestion.current=question;received.current='';stick.current=true;
-    const row=current.current;
-    const previous=row.messages[row.messages.length-1]?.role==='user'&&row.messages[row.messages.length-1].content===question?row.messages.slice(0,-1):row.messages;
-    const next=[...previous,{role:'user' as const,content:question}];pendingMessages.current=next;
-    update(value=>({...value,messages:next,draft:'',interrupted:true}),true);setError('');setBusy(true);setPhase('正在准备资料…');
-    try{
-      const answer=runtime.NATIVE?await runtime.ai(row.payload.mode,{...row.payload.args,readMode:row.readMode},question,s=>queue(s,id),previous,{requestId:id,onPhase:s=>{if(active.current===id&&mounted.current)setPhase(s);}}):await demoStream(s=>queue(s,id),()=>!demoStopped.current&&active.current===id);
-      if(active.current===id&&mounted.current){update(value=>({...value,messages:[...next,{role:'assistant',content:answer}],interrupted:false}),true);setPhase('回答完成');}
-    }catch(e){if(active.current===id&&mounted.current){update(value=>({...value,messages:received.current?[...next,{role:'assistant',content:received.current}]:next,interrupted:true}),true);setError(String(e));}}
-    finally{if(active.current===id){active.current='';clearTimeout(flush.current);flush.current=undefined;if(mounted.current)setBusy(false);}}
-  }
-  async function history(){keepPartial();setShowHistory(true);try{setRecords(await listConversations(storageScope||'preview'));}catch{setStorageError('无法读取历史对话，请稍后重试。');}}
-  function select(row:Conversation){if(row.id===current.current.id){setShowHistory(false);return;}stopForSwitch();current.current=row;setConversation(row);setShowHistory(false);setConfirmDelete('');stick.current=true;lastQuestion.current=[...row.messages].reverse().find(m=>m.role==='user')?.content||'';}
+  async function history(){persist(true);setShowHistory(true);try{setRecords(await listConversations(scope))}catch{setStorageError('历史对话暂时无法读取')}}
+  useEffect(()=>subscribeChat(()=>{const j=chatJob(current.current.id);if(j){current.current=j.row;setConversation(j.row)}renderRevision(n=>n+1)}),[]);
   useEffect(()=>{
-    const generation=++loadGeneration.current;
-    const initial=payload.args.initialQuestion;
-    const load=async()=>{
-      if(initialized.current&&current.current.source===sourceKey(payload)){
-        if(payload.args.history===true){await history();return;}
-        update(row=>({...row,payload:savedPayload(payload),title:context}));
-      }else{
-        stopForSwitch();setLoading(!!storageScope);
-        try{
-          const rows=storageScope?await listConversations(storageScope):[];
-          if(generation!==loadGeneration.current)return;
-          const row=rows.find(item=>item.source===sourceKey(payload))||newConversation(storageScope||'preview',context,payload);
-          if(payload.args.history!==true)row.payload=savedPayload(payload);
-          current.current=row;setConversation(row);setRecords(rows);setShowHistory(payload.args.history===true);setLoading(false);initialized.current=true;
-          lastQuestion.current=[...row.messages].reverse().find(m=>m.role==='user')?.content||'';
-        }catch{if(generation===loadGeneration.current){initialized.current=true;setLoading(false);setStorageError('无法读取历史对话，本次对话仍可使用。');}}
-      }
-      if(typeof initial==='string'&&initial&&generation===loadGeneration.current){setTimeout(()=>{if(generation===loadGeneration.current)void ask(initial);},0);}
-    };
-    void load();return()=>{loadGeneration.current++;};
-  },[payload,context,storageScope]);
-  useEffect(()=>{mounted.current=true;const save=()=>keepPartial();window.addEventListener('pagehide',save);document.addEventListener('visibilitychange',save);return()=>{keepPartial();mounted.current=false;loadGeneration.current++;clearTimeout(flush.current);clearTimeout(saveTimer.current);demoStopped.current=true;if(active.current&&runtime.NATIVE)void runtime.cancelAi(active.current).catch(()=>{});active.current='';window.removeEventListener('pagehide',save);document.removeEventListener('visibilitychange',save);};},[]);
-  useEffect(()=>{if(!open)keepPartial();},[open]);
-  useEffect(()=>{if(open&&stick.current&&messages.current)messages.current.scrollTop=messages.current.scrollHeight;},[conversation.messages,phase,open,showHistory]);
+    let active=true;const ticket=++generation.current;setLoading(!!storageScope);
+    void(async()=>{try{const rows=storageScope?await listConversations(scope):[];if(!active||ticket!==generation.current)return;
+      const requested=typeof payload.args.conversationId==='string'?payload.args.conversationId:'';const running=requested?chatJob(requested):sourceJob(scope,sourceKey(payload));let row=(running?.row.scope===scope?running.row:undefined)||(requested?rows.find(r=>r.id===requested):undefined)||(payload.args.newChat?undefined:rows.find(r=>r.source===sourceKey(payload)))||newConversation(scope,context,payload);
+      if(payload.args.history!==true&&!requested){const moved=row.payload.args.positionMs!==payload.args.positionMs;const incoming=savedPayload(payload);
+        // Reopening the same entry must not attach an already sent image again.
+        if(incoming.args.screenshot&&row.turns?.some(t=>incoming.args.attachmentId?t.payload.args.attachmentId===incoming.args.attachmentId:t.payload.args.screenshot===incoming.args.screenshot&&t.payload.args.positionMs===incoming.args.positionMs))delete incoming.args.screenshot;
+        row={...row,payload:incoming,title:context,...(payload.args.readMode==='full'?{readMode:'full'}:{}),...(moved?{followUps:[]}:{} )};row=patchChat(row)}
+      if(typeof payload.args.turnId==='string'){const t=row.turns?.find(t=>t.id===payload.args.turnId);if(t){const args={...t.payload.args};delete args.screenshot;row={...row,payload:{...t.payload,args}}}}
+      current.current=row;setConversation(row);setRecords(rows);setShowHistory(payload.args.history===true);setLoading(false);setQuote(undefined);
+      const initial=payload.args.initialQuestion,intent=String(payload.args.intentId||initial||'');
+      if(typeof initial==='string'&&initial&&intent!==lastIntent.current&&!chatJob(row.id)?.busy){lastIntent.current=intent;startChat(row,initial)}
+    }catch{if(active){setLoading(false);setStorageError('历史读取失败，当前问题仍可发送')}}})();
+    return()=>{active=false;generation.current++};
+  },[payload,context,scope]);
+  useEffect(()=>{mounted.current=true;return()=>{flushChats();if(!chatJob(current.current.id)?.busy)persist(true);mounted.current=false;clearTimeout(saveTimer.current)}},[]);
+  useEffect(()=>{if(!open){flushChats();persist(true)}},[open]);
+  useEffect(()=>{if(open&&stick.current&&messages.current)messages.current.scrollTop=messages.current.scrollHeight},[conversation.messages,open,showHistory]);
+  useEffect(()=>viewChat(conversation.id,open),[conversation.id,open]);
+  useEffect(()=>{if(open&&!busy)markChatRead(conversation.id)},[open,busy,conversation.id]);
   if(!open)return null;
-  const visibleRecords=records.filter(row=>(payload.args.history!==true||payload.mode!=='materials'||row.source===sourceKey(payload))&&`${row.title}\n${row.draft}\n${row.messages.map(m=>m.content).join('\n')}`.toLocaleLowerCase().includes(historyQuery.toLocaleLowerCase().trim()));
-  const body=<div className="ai-chat">
-    <div className="ai-context-bar"><span><Sparkles size={15}/>{modelName||'学习助手'}</span><button className="text-button" onClick={onConfigure}><Settings2 size={14}/>模型设置</button></div>
-    <div className="chat-history-tools"><button className="text-button" onClick={()=>showHistory?setShowHistory(false):void history()}>{showHistory?<ArrowLeft size={15}/>:<History size={15}/>} {showHistory?'返回对话':'历史对话'}</button><button className="text-button" disabled={loading||busy} onClick={()=>select(newConversation(storageScope||'preview',current.current.title,current.current.payload))}><Plus size={15}/>新对话</button></div>
-    {storageError&&<div className="notice amber" role="alert">{storageError}<button className="text-button" onClick={()=>persist(true)}>重试保存</button></div>}
-    {showHistory?<div className="chat-history-list" aria-label="历史对话">
-      <label className="search-field"><Search size={16}/><input aria-label="搜索历史对话" placeholder="搜索课堂或问题" value={historyQuery} onChange={e=>setHistoryQuery(e.target.value)}/></label>
-      {visibleRecords.map(row=><div className="chat-history-item" key={row.id}><button className="chat-history-open" onClick={()=>select(row)}><strong>{row.title}</strong><span>{row.messages.find(m=>m.role==='user')?.content||row.draft||'未发送草稿'}</span><small>{new Date(row.updatedAt).toLocaleString('zh-CN')} · {row.messages.filter(m=>m.role==='user').length} 个问题</small></button><button className="icon-button" aria-label={confirmDelete===row.id?'确认删除对话':`删除对话 ${row.title}`} onClick={async()=>{if(confirmDelete!==row.id){setConfirmDelete(row.id);return;}try{if(row.id===current.current.id){stopForSwitch();const next=newConversation(storageScope||'preview',row.title,row.payload);current.current=next;setConversation(next);}await deleteConversation(storageScope||'preview',row.id);setRecords(await listConversations(storageScope||'preview'));setConfirmDelete('');}catch{setStorageError('删除失败，请稍后重试。');}}}>{confirmDelete===row.id?'确认':<Trash2 size={16}/>}</button></div>)}
-      {!visibleRecords.length&&<div className="empty"><History size={26}/><h3>{historyQuery?'没有匹配的对话':'暂无对话记录'}</h3><p>提问和草稿会自动保存在本机。</p></div>}
+  const turns=conversation.turns||[],lastTurn=turns[turns.length-1],followUps=conversation.followUps||[],suggestion=followUps[0],favorites=presets.filter(p=>p.favorite).slice(0,3),classroom=typeof conversation.payload.args.resourceId==='string'&&typeof conversation.payload.args.positionMs==='number';
+  const visibleRecords=records.filter(row=>(payload.args.history!==true||payload.mode!=='materials'||row.source===sourceKey(payload))&&`${row.title}\n${row.draft}\n${row.messages.map(m=>m.content).join('\n')}`.toLocaleLowerCase().includes(historyQuery.trim().toLocaleLowerCase()));
+  function mark(turn:StudyTurn,status:StudyTurn['status']){update(row=>({...row,turns:row.turns?.map(t=>t.id===turn.id?{...t,status:t.status===status?'open':status}:t)}),true)}
+  const close=()=>{persist(true);onClose?.()};
+  const body=<div className="ai-chat study-chat">
+    <div className="chat-toolbar"><span className="chat-source" title={conversation.title}>{classroom?String(conversation.payload.args.positionLabel||subtitleTime(Number(conversation.payload.args.positionMs))):'学习助手'}</span><button className="icon-button" aria-label="提问资料" title="提问资料" disabled={busy} onClick={()=>study.materials(conversation.title,conversation.payload,value=>update(row=>({...row,payload:savedPayload(value),source:sourceKey(value)}),true))}><Paperclip size={18}/></button><button className="icon-button" aria-label={showHistory?'返回对话':'历史对话'} title="历史对话" onClick={()=>showHistory?setShowHistory(false):void history()}><History size={18}/></button><button className="icon-button" aria-label="整理成笔记" title="整理成笔记" disabled={busy||!conversation.messages.some(m=>m.role==='assistant')} onClick={()=>setNote(true)}><Bookmark size={18}/></button><details className="chat-more"><summary aria-label="对话工具"><Ellipsis size={20}/></summary><div><button disabled={loading} onClick={()=>select(newConversation(scope,current.current.title,current.current.payload))}><Plus size={15}/>新对话</button><button aria-label="AI 预设" onClick={()=>setSettings(true)}><SlidersHorizontal size={15}/>快捷提问预设</button>{conversation.payload.mode==='file'&&<ChoicePicker label="读取方式" disabled={busy} value={conversation.readMode} onChange={readMode=>update(row=>({...row,readMode}))} options={[{value:'relevant',label:'问答'},{value:'full',label:'全文总结'}]}/>}<small>{conversation.title}</small>{typeof conversation.payload.args.contextLabel==='string'&&<small>{conversation.payload.args.contextLabel}</small>}{!!conversation.symbols?.length&&<details className="classroom-symbols"><summary>本堂符号与约定 · {conversation.symbols.length}</summary>{conversation.symbols.map((s,i)=><p key={i}><b>{s.symbol}</b> {s.meaning}<small>原文：{s.evidence}</small></p>)}</details>}{classroom&&onPlayback&&<><button onClick={()=>onPlayback(lastTurn?.payload||conversation.payload,Math.max(0,Number((lastTurn?.payload||conversation.payload).args.positionMs||0)-5000),true)}><Play size={15}/>从 {subtitleTime(Math.max(0,Number((lastTurn?.payload||conversation.payload).args.positionMs||0)-5000))} 继续看</button><button onClick={()=>onPlayback(conversation.payload,-1,true)}>继续当前位置</button></>}{followUps.slice(1).map(q=><button key={q} onClick={()=>ask(q)}>{q}</button>)}</div></details></div>
+    {(storageError||job?.storageError)&&<div className="notice amber" role="alert">{storageError||job?.storageError}<button className="text-button" onClick={()=>persist(true)}>重试保存</button></div>}
+    {showHistory?<div className="chat-history-list" aria-label="历史对话"><label className="search-field"><Search size={16}/><input aria-label="搜索历史对话" placeholder="搜索课堂或问题" value={historyQuery} onChange={e=>setHistoryQuery(e.target.value)}/></label>
+      {visibleRecords.map(row=><div className="chat-history-item" key={row.id}><button className="chat-history-open" onClick={()=>select(row)}><strong>{row.title}</strong><span>{row.messages.find(m=>m.role==='user')?.content||row.draft||'未发送草稿'}</span><small>{new Date(row.updatedAt).toLocaleString('zh-CN')} · {row.messages.filter(m=>m.role==='user').length} 个问题</small></button><button className="icon-button" aria-label={confirmDelete===row.id?'确认删除对话':`删除对话 ${row.title}`} onClick={async()=>{if(confirmDelete!==row.id){setConfirmDelete(row.id);return}try{forgetChat(row.id);await deleteConversation(scope,row.id);if(row.id===current.current.id)select(newConversation(scope,row.title,row.payload));setRecords(await listConversations(scope));setConfirmDelete('')}catch{setStorageError('删除失败，请重试')}}}>{confirmDelete===row.id?'确认':<Trash2 size={16}/>}</button></div>)}
+      {!visibleRecords.length&&<div className="empty"><History size={25}/><h3>{historyQuery?'没有匹配的对话':'暂无对话记录'}</h3><p>问题和草稿自动保存在本机。</p></div>}
     </div>:<>
-      {loading&&<div className="notice"><LoaderCircle size={15} className="spin"/>正在恢复对话…</div>}
-      {conversation.payload.mode==='file'&&<ChoicePicker label="读取方式" disabled={busy} value={conversation.readMode} onChange={readMode=>update(row=>({...row,readMode}))} options={[{value:'relevant',label:'问答'},{value:'full',label:'全文总结'}]}/>}
-      {typeof conversation.payload.args.screenshot==='string'&&<div className="question-screenshot"><img alt="当前课堂截图" src={conversation.payload.args.screenshot}/><small>{String(conversation.payload.args.positionLabel||'课堂画面')}</small></div>}
-      <div className="ai-messages" ref={messages} onScroll={()=>{const el=messages.current;if(el)stick.current=el.scrollHeight-el.scrollTop-el.clientHeight<80;}} aria-label="对话记录">
-        {!conversation.messages.length&&!loading&&<div className="ai-welcome"><span><Sparkles size={25}/></span><h3>有哪里没弄懂？</h3><p>{conversation.title}</p><div className="suggestions">{(conversation.payload.mode==='materials'?['总结本堂课的重点','解释本堂课最重要的公式']:['帮我总结这份资料','解释这份资料中的主要公式']).map(q=><button key={q} onClick={()=>void ask(q)}>{q}</button>)}</div></div>}
-        {conversation.messages.map((m,i)=><div className={`chat-message ${m.role}`} key={i}><small>{m.role==='user'?'我':'学习助手'}</small>{m.role==='assistant'?<RichAnswer text={m.content} onTime={href=>onTime(href,conversation.payload)}/>:<p style={{whiteSpace:'pre-wrap'}}>{m.content}</p>}</div>)}
-        {busy&&<div className="chat-message assistant streaming-message"><small><LoaderCircle size={12} className="spin"/>{phase}</small></div>}
-        {!busy&&conversation.interrupted&&!!conversation.messages.length&&!error&&<p className="ai-footnote">上次回答已中断，已保留收到的内容。</p>}
-        {error&&<div className="notice amber" role="alert"><p>{error}</p><button className="text-button" disabled={busy} onClick={()=>void ask(lastQuestion.current)}><RefreshCw size={13}/>重试</button></div>}
+      {loading&&<p role="status" className="ai-footnote">正在恢复对话…</p>}
+      <div className="ai-messages" ref={messageNode} aria-label="对话记录" onScroll={()=>{const el=messages.current;if(el){scrollPosition.current=el.scrollTop;stick.current=el.scrollHeight-el.scrollTop-el.clientHeight<80}}}>
+        {!conversation.messages.length&&!loading&&<div className="ai-welcome"><span><Sparkles size={24}/></span><h3>{classroom?'这里有什么没弄懂？':'从一个问题开始'}</h3><p>{classroom?'画面和附近讲解已准备好':conversation.title}</p></div>}
+        {conversation.messages.map((m,i)=>{const turn=turns.find(t=>t.messageIndex===i)||(m.role==='assistant'?[...turns].reverse().find(t=>t.messageIndex<i):undefined);const anchored=turn?.payload||conversation.payload;return <article className={`chat-message ${m.role}`} key={i} data-message-index={i} onPointerUp={inspectSelection}><small>{m.role==='user'?'我':'学习助手'}{m.role==='user'&&turn&&Number.isFinite(turn.payload.args.positionMs)&&<button className="text-button" onClick={()=>onPlayback?.(turn.payload,Number(turn.payload.args.positionMs),false)}>{String(turn.payload.args.positionLabel||subtitleTime(Number(turn.payload.args.positionMs)))}</button>}</small>{m.role==='user'&&typeof turn?.payload.args.screenshot==='string'&&<details className="message-image"><summary><ImageIcon size={13}/>提问截图</summary><img loading="lazy" decoding="async" src={String(turn.payload.args.screenshot)} alt="已发送的截图"/></details>}{m.role==='assistant'?<RichAnswer text={m.content} onTime={href=>onTime(href,anchored)}/>:<p style={{whiteSpace:'pre-wrap'}}>{m.content}</p>}
+          {m.role==='assistant'&&(!busy||i<conversation.messages.length-1)&&<details className="answer-actions"><summary>更多</summary><div><button onClick={()=>setQuote({text:m.content.slice(0,1500),turn})}><Quote size={13}/>追问这段</button><button onClick={()=>{update(row=>({...row,pinned:m.content}),true)}}><Pin size={13}/>固定解释</button>{['太难了','太长了','答偏了'].map(label=><button key={label} disabled={busy} onClick={()=>{const q=label==='太难了'?'请换成更基础、更直观的解释。':label==='太长了'?'请只保留回答我这个问题必需的内容。':'请重新对照我的问题和课堂资料，检查刚才的解释哪里偏离了。';try{startChat({...current.current,payload:turn?.payload||current.current.payload},q+'\n引用上一条解释：'+m.content.slice(0,1500));setQuote(undefined)}catch(e){setError(String(e))}}}>{label}</button>)}</div></details>}
+          {m.role==='user'&&turn&&<div className="question-state"><button className={turn.status==='understood'?'selected':''} onClick={()=>mark(turn,'understood')}><Check size={12}/>已理解</button><button className={turn.status==='later'?'selected':''} onClick={()=>mark(turn,'later')}><Bookmark size={12}/>稍后再看</button></div>}
+        </article>})}
+        {busy&&<div className="streaming-message" role="status"><LoaderCircle size={13} className="spin"/>{job?.phase||'正在回答…'}</div>}
+        {!busy&&conversation.interrupted&&!job?.error&&<p className="ai-footnote">已保留未完成的回答。<button className="text-button" onClick={()=>ask('请从上一条回答中断的位置继续完成，不要重复已讲过的部分；如果中断在公式或句子中，请先补完整。')}>继续生成</button></p>}
+        {(error||job?.error)&&<div className="notice amber" role="alert"><p>{(error||job?.error||'').replace('[INCOMPLETE] ','')}</p><button className="text-button" disabled={busy} onClick={()=>ask(job?.raw?'请从上一条回答中断的位置继续完成，不要重复已讲过的部分；如果中断在公式或句子中，请先补完整。':job?.lastQuestion||conversation.messages.filter(m=>m.role==='user').slice(-1)[0]?.content||'请继续解释')}><RefreshCw size={13}/>{job?.raw?'继续生成':'重试'}</button></div>}
       </div>
-      <form className="ai-compose" onSubmit={e=>{e.preventDefault();void ask();}}><textarea aria-label="向学习助手提问" placeholder="继续提问，或描述没听懂的地方…" disabled={loading} value={conversation.draft} onChange={e=>update(row=>({...row,draft:e.target.value}))} rows={2}/>{busy?<button type="button" aria-label="停止生成" onClick={()=>{if(runtime.NATIVE)void runtime.cancelAi(active.current).catch(e=>setError(String(e)));else demoStopped.current=true;}}><Square size={16}/></button>:<button aria-label="发送问题" disabled={loading||!conversation.draft.trim()}><ArrowUp size={18}/></button>}</form>
-      <p className="ai-footnote">{storageScope?'对话自动保存在本机 · ':''}请核对资料中的关键结论。</p>
+      {quote&&<div className="study-quote"><Quote size={14}/><span>{quote.text}</span><button className="text-button" disabled={busy} onClick={()=>ask('请解释我引用的这一句，说明它与当前讲解的关系。')}>解释这句</button><button className="icon-button" aria-label="取消引用" onClick={()=>setQuote(undefined)}><X size={15}/></button></div>}
+      {!conversation.messages.length&&<div className="ai-preset-strip" aria-label="快捷提问">{favorites.map(p=><button key={p.id} disabled={busy||loading} onClick={()=>ask(p.prompt)}>{p.label}</button>)}</div>}
+      <form className={`ai-compose study-compose ${expandedInput?"composer-expanded":""}`} onSubmit={e=>{e.preventDefault();ask()}}>
+        {typeof conversation.payload.args.screenshot==='string'&&<div className="compose-attachment"><button type="button" aria-label="编辑提问截图" onClick={()=>setCrop(true)}><img src={conversation.payload.args.screenshot} alt="待发送截图"/><span>标记 / 裁剪</span></button><button type="button" className="icon-button" aria-label="移除提问截图" onClick={()=>update(row=>{const args={...row.payload.args};delete args.screenshot;return{...row,payload:{...row.payload,args}}})}><X size={15}/></button></div>}
+        <div className="compose-main"><div className="study-compose-input"><textarea ref={composer} rows={1} aria-label="向学习助手提问" aria-keyshortcuts="Enter Shift+Enter" onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing&&e.keyCode!==229){e.preventDefault();ask()}}} placeholder={!busy&&suggestion?suggestion:'继续提问…'} disabled={loading} value={conversation.draft} onFocus={()=>{if(suggestion&&!current.current.draft&&!busy)update(row=>({...row,draft:suggestion}))}} onChange={e=>update(row=>({...row,draft:e.target.value}))}/></div><button type="button" className="compose-expand" title={expandedInput?"收起输入框":"扩大输入框"} aria-label={expandedInput?"收起输入框":"扩大输入框"} aria-expanded={expandedInput} onClick={()=>{setExpandedInput(v=>!v);queueMicrotask(()=>composer.current?.focus())}}>{expandedInput?<Minimize2 size={16}/>:<Maximize2 size={16}/>}</button>{busy?<button type="button" aria-label="停止生成" onClick={()=>stopChat(conversation.id)}><Square size={15}/></button>:<button aria-label="发送问题" disabled={loading||(!conversation.draft.trim()&&!suggestion)}><ArrowUp size={18}/></button>}</div></form>
     </>}
+    {selectionPrompt&&createPortal(<button className="selection-question" style={{left:selectionPrompt.left,top:selectionPrompt.top}} onPointerDown={e=>e.preventDefault()} onClick={()=>{setQuote({text:selectionPrompt.text,turn:selectionPrompt.turn});setSelectionPrompt(undefined);window.getSelection()?.removeAllRanges();composer.current?.focus()}}><Quote size={15}/>追问</button>,document.body)}
+
+    {note&&<ConversationNote row={conversation} onClose={()=>setNote(false)}/>}
+    {crop&&typeof conversation.payload.args.screenshot==='string'&&<ImageCropper image={conversation.payload.args.screenshot} onClose={()=>setCrop(false)} onDone={image=>{update(row=>({...row,payload:{...row.payload,args:{...row.payload.args,screenshot:image}}}));setCrop(false)}}/>}
+    {settings&&<Modal title="快捷提问" onClose={()=>setSettings(false)} wide><p className="paragraph">收藏的前三项显示在输入框旁，点击即可提问。</p><div className="preset-editor">{presets.map((p,i)=><div key={p.id}><label><input type="checkbox" aria-label={`收藏 ${p.label}`} checked={p.favorite} onChange={e=>setPresets(rows=>rows.map((r,n)=>n===i?{...r,favorite:e.target.checked}:r))}/><Star size={14}/><input aria-label={`预设名称 ${i+1}`} maxLength={40} value={p.label} onChange={e=>setPresets(rows=>rows.map((r,n)=>n===i?{...r,label:e.target.value}:r))}/><button className="icon-button" aria-label={`删除预设 ${p.label}`} onClick={()=>setPresets(rows=>rows.filter((_,n)=>n!==i))}><Trash2 size={14}/></button></label><textarea aria-label={`预设提示词 ${i+1}`} maxLength={4000} value={p.prompt} onChange={e=>setPresets(rows=>rows.map((r,n)=>n===i?{...r,prompt:e.target.value}:r))}/></div>)}</div><div className="button-row"><button className="button secondary" disabled={presets.length>=30} onClick={()=>setPresets(rows=>[...rows,{id:`preset-${Date.now()}`,label:'我的提问',prompt:'',favorite:false}])}><Plus size={15}/>添加</button><button className="button primary" onClick={()=>{try{const rows=presets.filter(p=>p.label.trim()&&p.prompt.trim());savePresets(scope,rows);setPresets(rows.length?rows:loadPresets(scope));setSettings(false)}catch{setError('预设保存失败，请检查可用空间')}}}>保存</button></div></Modal>}
   </div>;
-  return onClose?<Modal title="Canvas 学习助手" subtitle={conversation.title} wide onClose={()=>{keepPartial();onClose();}}>{body}</Modal>:body;
+  if(!onClose)return body;
+  return <ChatWindow scope={scope} title={conversation.title} docked={docked} onClose={close}>{body}</ChatWindow>;
 }
-async function demoStream(onText:(s:string)=>void,active:()=>boolean){const text='这是**演示回答**，未读取真实文件或调用模型。\n\n以勾股定理为例：\n\n$$a^2+b^2=c^2$$\n\n公式会直接排版，回答按收到的数据分段显示。';for(const part of text.match(/.{1,12}|\n/g)||[]){await new Promise(r=>setTimeout(r,35));if(!active())throw new Error('已停止生成');onText(part)}return text;}

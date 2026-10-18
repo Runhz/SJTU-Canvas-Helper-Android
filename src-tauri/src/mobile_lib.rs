@@ -27,6 +27,7 @@ pub fn run() {
             mobile::submit_work,
             mobile::ai_chat,
             mobile::cancel_ai,
+            mobile::read_course_file,
             mobile::list_models,
             mobile::model_capabilities,
             mobile::test_model,

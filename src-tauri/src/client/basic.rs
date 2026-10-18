@@ -25,6 +25,11 @@ impl Client {
         }
     }
 
+    pub fn mobile_restore_web_cookies(&self,url:&str,cookies:&str){
+        if !["https://jaccount.sjtu.edu.cn/","https://my.sjtu.edu.cn/","https://oc.sjtu.edu.cn/","https://v.sjtu.edu.cn/","https://courses.sjtu.edu.cn/"].contains(&url){return}
+        if let Ok(url)=tauri::Url::parse(url){for cookie in cookies.split(';').map(str::trim).filter(|v|!v.is_empty()){self.jar.add_cookie_str(cookie,&url);}}
+    }
+
     pub async fn mobile_resolve_download(&self, url: &str, token: &str) -> Result<(String, std::collections::HashMap<String,String>)> {
         use reqwest::cookie::CookieStore;
         let parsed=tauri::Url::parse(url).map_err(|_|AppError::FilePreview("Invalid download URL".into()))?;

@@ -38,10 +38,36 @@ impl SseDecoder{
     pub fn finish(&mut self)->Result<Vec<Value>>{let mut output=self.push(b"\n\n")?;if let Some(v)=self.flush()?{output.push(v)}Ok(output)}
 }
 fn content(value:&Value)->String{if let Some(s)=value.as_str(){s.to_owned()}else{value.as_array().map(|a|a.iter().filter_map(|v|v["text"].as_str()).collect()).unwrap_or_default()}}
+#[derive(Default)]
+struct CompletionEnd { reason:Option<String> }
+impl CompletionEnd {
+    fn observe(&mut self,value:&Value){if let Some(reason)=value["choices"][0]["finish_reason"].as_str(){self.reason=Some(reason.to_owned())}}
+    fn validate(&self,done:bool)->Result<()>{match self.reason.as_deref(){
+        Some("length")=>Err("[INCOMPLETE] 回答达到服务的生成长度上限，已有内容已保留，可继续生成".into()),
+        Some("content_filter")=>Err("回答被模型服务提前结束，已有内容已保留".into()),
+        Some("stop")=>Ok(()),
+        _ if done=>Ok(()),
+        _=>Err("[INCOMPLETE] 回答连接提前结束，已有内容已保留，可继续生成".into()),
+    }}
+}
 pub async fn stream(base:&str,key:&str,model:&str,messages:Value,on_text:&mut(dyn FnMut(String)+Send),on_phase:&mut(dyn FnMut(String)+Send))->Result<String>{
     if key.trim().is_empty()||model.trim().is_empty(){return Err("请先配置模型名称和 API Key".into())}
     on_phase("正在连接模型服务…".into());
-    let response=http()?.post(endpoint(base,"chat/completions")?).bearer_auth(key.trim()).header(reqwest::header::ACCEPT,"text/event-stream").json(&json!({"model":model,"messages":messages,"stream":true})).send().await.map_err(|e|if e.is_timeout(){"模型连接超时，请重试"}else{"无法连接模型服务，请检查网络与地址"})?;
+    let modern=model.to_ascii_lowercase();
+    let mut limit_name=if modern.contains("mimo")||modern.starts_with("gpt-5")||modern.starts_with("o1")||modern.starts_with("o3")||modern.starts_with("o4"){"max_completion_tokens"}else{"max_tokens"};
+    let mut attempt=0;
+    let response=loop {
+        let mut body=json!({"model":model,"messages":messages,"stream":true});body[limit_name]=json!(16384);
+        let response=http()?.post(endpoint(base,"chat/completions")?).bearer_auth(key.trim()).header(reqwest::header::ACCEPT,"text/event-stream").json(&body).send().await.map_err(|e|if e.is_timeout(){"模型连接超时，请重试"}else{"无法连接模型服务，请检查网络与地址"})?;
+        if matches!(response.status().as_u16(),400|422)&&attempt==0 {
+            let status=response.status();let body:Value=response.json().await.unwrap_or_default();let message=body["error"]["message"].as_str().unwrap_or("").to_ascii_lowercase();
+            if message.contains(limit_name)&&["unsupported","not supported","unknown","unrecognized","not allowed"].iter().any(|s|message.contains(s)) {limit_name=if limit_name=="max_tokens"{"max_completion_tokens"}else{"max_tokens"};attempt+=1;continue}
+            if message.contains("context")||message.contains("too many tokens"){return Err("[CONTEXT_LIMIT] 资料超过模型容量".into())}
+            if message.contains("image")&&(message.contains("not support")||message.contains("unsupported")||message.contains("invalid content")){return Err("当前模型或服务不接受图片，请切换支持图片的模型".into())}
+            return Err(status_message(status));
+        }
+        break response;
+    };
     if !response.status().is_success(){
         let status=response.status();
         if matches!(status.as_u16(),400|413|422){
@@ -54,8 +80,14 @@ pub async fn stream(base:&str,key:&str,model:&str,messages:Value,on_text:&mut(dy
         return Err(status_message(status))
     }
     let is_json=response.headers().get(reqwest::header::CONTENT_TYPE).and_then(|s|s.to_str().ok()).is_some_and(|s|s.contains("application/json"));
-    if is_json{on_phase("服务返回普通响应，正在等待完整内容…".into());let body:Value=response.json().await.map_err(|_|"模型响应解析失败")?;let text=content(&body["choices"][0]["message"]["content"]);if text.is_empty(){return Err("模型没有返回正文".into())}on_text(text.clone());return Ok(text)}
-    let mut decoder=SseDecoder::default();let mut body=response.bytes_stream();let mut full=String::new();let mut consume=|v:Value|->Result<()>{if v.get("error").is_some(){return Err("模型在生成中返回错误，请检查服务额度或上下文设置".into())}let delta=&v["choices"][0]["delta"];if delta.get("reasoning_content").is_some()||delta.get("reasoning").is_some(){on_phase("模型正在思考…".into())}let text=content(&delta["content"]);if !text.is_empty(){on_phase("正在回答…".into());full.push_str(&text);on_text(text);}Ok(())};
+    if is_json{on_phase("服务返回普通响应，正在等待完整内容…".into());let body:Value=response.json().await.map_err(|_|"模型响应解析失败")?;let text=content(&body["choices"][0]["message"]["content"]);if text.is_empty(){return Err("模型没有返回正文".into())}on_text(text.clone());let mut end=CompletionEnd::default();end.observe(&body);end.validate(true)?;return Ok(text)}
+    let mut decoder=SseDecoder::default();let mut body=response.bytes_stream();let mut full=String::new();let mut end=CompletionEnd::default();let mut consume=|v:Value|->Result<()>{if v.get("error").is_some(){return Err("模型在生成中返回错误，请检查服务额度或上下文设置".into())}end.observe(&v);let delta=&v["choices"][0]["delta"];if delta.get("reasoning_content").is_some()||delta.get("reasoning").is_some(){on_phase("模型正在思考…".into())}let text=content(&delta["content"]);if !text.is_empty(){on_phase("正在回答…".into());full.push_str(&text);on_text(text);}Ok(())};
     while let Some(bytes)=body.next().await{for event in decoder.push(&bytes.map_err(|_|"回答连接中断，已收到的内容已保留")?)?{consume(event)?}if decoder.done{break}}
-    for event in decoder.finish()?{consume(event)?}if full.trim().is_empty(){return Err("模型没有返回正文，请检查该模型是否支持此接口".into())}Ok(full)
+    for event in decoder.finish()?{consume(event)?}end.validate(decoder.done)?;if full.trim().is_empty(){return Err("模型没有返回正文，请检查该模型是否支持此接口".into())}Ok(full)
+}
+
+#[cfg(test)] mod tests{
+    use super::*;
+    #[test] fn distinguishes_length_and_missing_terminal_from_complete(){let mut end=CompletionEnd::default();assert!(end.validate(false).unwrap_err().contains("[INCOMPLETE]"));end.observe(&json!({"choices":[{"finish_reason":"length"}]}));assert!(end.validate(true).unwrap_err().contains("生成长度"));end.observe(&json!({"choices":[{"finish_reason":"stop"}]}));assert!(end.validate(false).is_ok());}
+    #[test] fn decodes_split_chinese_and_terminal_without_losing_the_tail(){let input="data: {\"choices\":[{\"delta\":{\"content\":\"完整中文尾句。\"},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n";for step in 1..16{let mut decoder=SseDecoder::default();let mut events=Vec::new();for chunk in input.as_bytes().chunks(step){events.extend(decoder.push(chunk).unwrap())}events.extend(decoder.finish().unwrap());assert!(decoder.done);assert_eq!(content(&events[0]["choices"][0]["delta"]["content"]),"完整中文尾句。");}}
 }

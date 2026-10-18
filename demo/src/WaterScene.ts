@@ -12,6 +12,7 @@ precision highp float;
 uniform sampler2D uField;
 uniform vec2 uTexel;
 uniform float uDark;
+uniform float uTime;
 varying vec2 vUv;
 float density(vec2 uv){return texture2D(uField,uv).r;}
 void main(){
@@ -38,6 +39,14 @@ void main(){
     body+=vec3(.7,.9,1.)*(fresnel*.12+spec*.32+strip);
     float broad=exp(-pow((p.x+.48)/.12,2.)-pow((p.y+.34)/.48,2.))*.19;
     body+=vec3(.7,.91,1.)*broad;
+    // Broad studio reflection and restrained moving caustics retain a clean, continuous body.
+    float windowLight=exp(-pow((p.x+.32)/.22,4.)-pow((p.y-.3)/.45,4.));
+    float causticLight=pow(max(0.,sin(p.x*11.+uTime*.35)*sin(p.y*9.-uTime*.22)),8.);
+    float refractedBand=exp(-pow((p.x-sin(uTime*.48+p.y*3.)*.16)/.055,2.))*smoothstep(.06,.72,thickness);
+    float surfaceSheen=pow(max(0.,dot(n,normalize(vec3(-.18,.92,1.8)))),90.);
+    body+=vec3(.58,.82,.87)*(windowLight*.055+causticLight*thickness*.075+refractedBand*.16);
+    body+=vec3(.78,.97,1.)*(surfaceSheen*.34);
+    body=mix(body,body*vec3(.77,.83,.89),uDark*.24);
     body=mix(body,vec3(.68,.9,.94),edge*.1);
     float caustic=pow(max(0.,1.-abs(r-.82)/.09),3.)*max(0.,-p.y)*.17;
     body+=vec3(.24,.63,.7)*caustic;
@@ -65,7 +74,7 @@ export function createWaterScene(host:HTMLElement,quality:WaterQuality,fill:numb
   field.minFilter=field.magFilter=THREE.LinearFilter;field.generateMipmaps=false;
   const camera=new THREE.Camera();
   const texel=new THREE.Vector2(1/surface.size,1/surface.size);
-  const material=new THREE.ShaderMaterial({transparent:true,depthTest:false,depthWrite:false,uniforms:{uField:{value:field},uTexel:{value:texel},uDark:{value:0}},vertexShader:vertex,fragmentShader:liquidShader});
+  const material=new THREE.ShaderMaterial({transparent:true,depthTest:false,depthWrite:false,uniforms:{uField:{value:field},uTexel:{value:texel},uDark:{value:0},uTime:{value:0}},vertexShader:vertex,fragmentShader:liquidShader});
   const quad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),material),scene=new THREE.Scene();scene.add(quad);
   const resize=()=>{const {width,height}=host.getBoundingClientRect();if(width&&height)renderer.setSize(width,height,false);};
   const observer=new ResizeObserver(resize);observer.observe(host);resize();
@@ -73,9 +82,10 @@ export function createWaterScene(host:HTMLElement,quality:WaterQuality,fill:numb
     if(options.input)fluid.sample(options.input(frame.dt));
     if(!frame.reduced)fluid.advance(frame.dt);
     surface.update(fluid.particlePos,fluid.numParticles,fluid.particleRadius,amount);field.needsUpdate=true;
+    material.uniforms.uTime.value=frame.time;
     material.uniforms.uDark.value=document.documentElement.dataset.theme==='dark'||host.closest('[data-theme="dark"]')?1:0;
     renderer.clear();renderer.render(scene,camera);
-  },sample=>{if(!options.input)fluid.sample(sample);},side=>fluid.kick(side));
+  },sample=>{if(!options.input)fluid.sample(sample);},side=>fluid.kick(side,Math.min(.65,Math.abs(side)*.9)));
   return {
     ...motion,setFill(value){amount=value;fluid.setFill(value);motion.setFill(value);},
     dispose(){motion.dispose();observer.disconnect();quad.geometry.dispose();material.dispose();field.dispose();renderer.dispose();renderer.domElement.remove();},

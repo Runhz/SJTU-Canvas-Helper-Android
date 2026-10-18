@@ -1,7 +1,7 @@
 export type Submission = 'unsubmitted' | 'submitted' | 'late' | 'unknown';
 export interface Assignment {
   id: string; courseId: string; title: string; description: string; dueAt: number;
-  submission: Submission; submittedAt?: number; attachments?: string[]; allowedExtensions?:string[]; uploadAllowed?:boolean; locked?:boolean; htmlUrl?:string;
+  requirementFiles?:CourseFile[]; submittedFiles?:CourseFile[]; submission: Submission; submittedAt?: number; attachments?: string[]; allowedExtensions?:string[]; uploadAllowed?:boolean; locked?:boolean; htmlUrl?:string;
 }
 export interface Course { id: string; name: string; code: string; teacher: string; color: 'blue' | 'sand' | 'green' | 'purple'; glyph: string; files: CourseFile[]; filesLoaded?:boolean;fileLoading?:boolean;fileError?:string;term?: {id:string;name:string;startAt?:number;endAt?:number} }
 export interface CourseFile { id: string; name: string; size: string; kind: string; updated: string; raw?:Record<string,unknown> }

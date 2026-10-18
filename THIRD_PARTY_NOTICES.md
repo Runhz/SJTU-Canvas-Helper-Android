@@ -30,7 +30,7 @@ THE SOFTWARE.
 
 https://github.com/lucide-icons/lucide
 
-The application and Android launcher use Lucide BookOpen geometry.
+The application interface uses Lucide icons. The Android launcher and application brand mark use the user-selected original ribbon design in assets/branding; they no longer use Lucide BookOpen geometry.
 
 ISC License
 

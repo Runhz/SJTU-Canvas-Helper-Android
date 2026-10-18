@@ -1,5 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
-<title>Canvas 随行</title><rect width="108" height="108" rx="31" fill="#1c2024"/>
-<!-- Lucide BookOpen, ISC; see THIRD_PARTY_NOTICES.md. -->
-<g transform="translate(23 23) scale(2.6)" fill="none" stroke="#ffffff" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></g><circle cx="88" cy="20" r="3" fill="#90a8ff"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="178 178 898 898"><rect x="178" y="178" width="898" height="898" rx="200" fill="#101C31"/><path fill="#FAF8F1" fill-rule="evenodd" d="M665 324 C676 317 686 328 686 348 L686 471 C686 487 689 496 703 504 L860 585 C904 607 924 631 924 670 L924 750 C924 788 905 815 869 831 L583 931 C552 945 529 933 529 897 L529 817 C529 801 530 790 537 776 L376 703 C345 690 331 677 331 650 L331 518 C330 483 350 457 382 442 Z M686 500 C686 514 676 519 657 527 L397 638 C374 649 361 661 362 671 C363 684 376 694 393 701 L537 774 C550 751 568 738 599 725 L777 659 L728 636 C701 622 690 604 689 576 Z"/></svg>

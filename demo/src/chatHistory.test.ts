@@ -23,4 +23,7 @@ describe('local conversations',()=>{
     await deleteConversation('student-b',first.id);expect(await listConversations('student-a')).toHaveLength(2);
     await deleteConversation('student-a',first.id);expect((await listConversations('student-a'))[0].id).toBe(second.id);
   });
+  it('keeps bundle source IDs while discarding authentication and download URLs',()=>{
+    expect(savedPayload({mode:'materials',args:{files:[{id:12,name:'中文课件.pptx',courseId:'4',url:'https://private.test',headers:{Authorization:'secret'}},null],headers:{Cookie:'secret'}}})).toEqual({mode:'materials',args:{files:[{id:12,name:'中文课件.pptx',courseId:'4'}]}});
+  });
 });

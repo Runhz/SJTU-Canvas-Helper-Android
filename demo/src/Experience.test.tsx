@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import App from './App';
 
 beforeEach(() => {
-  localStorage.clear(); window.scrollTo=vi.fn();
+  Object.defineProperty(window,'innerWidth',{value:393,configurable:true});localStorage.clear(); window.scrollTo=vi.fn();
   vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-15T08:00:00+08:00'));
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); });

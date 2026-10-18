@@ -1,0 +1,59 @@
+/* Shared, quiet surfaces; content gets the space, controls stay together. */
+.app-shell .app-header{display:flex;align-items:center;justify-content:flex-start;gap:8px;padding-inline:16px;background:var(--bg)}
+.app-shell .app-header .header-search{flex:1 1 0;max-width:none;min-width:0;height:46px;border-radius:16px;border:1px solid var(--line);background:var(--card)}
+.app-shell .app-header>.icon-button{margin:0;flex:0 0 46px;width:46px;height:46px;border-radius:16px;background:var(--card);border:1px solid var(--line)}
+.workspace-pad .workspace-rail{flex-basis:64px;padding:12px 6px;gap:16px;border:0;background:var(--bg)}
+.workspace-pad .workspace-rail>nav{gap:4px}.workspace-pad .workspace-rail nav>button{min-height:54px;border-radius:16px}
+.workspace-pad>.workspace-pages{padding:4px 4px 4px 0;gap:4px}
+.workspace-pad .workspace-pane{border:0;border-radius:18px;background:var(--card)}
+.workspace-pad.split .workspace-pane.active{border:0;box-shadow:none}
+.workspace-pad .workspace-pane-label{height:40px;min-height:40px;padding:0 14px;gap:7px;color:var(--muted);border:0;background:var(--card);position:relative;font-size:12px}
+.workspace-pad .workspace-pane.active>.workspace-pane-label{color:var(--accent)}
+.workspace-pad .workspace-pane.active>.workspace-pane-label:after{content:'';position:absolute;left:14px;bottom:3px;width:24px;height:3px;border-radius:3px;background:var(--accent)}
+.workspace-pad .app-content{padding:15px!important;background:var(--card)}
+.platform-preview-card .document-preview-canvas{height:clamp(200px,48dvh,520px);background:var(--surface-soft)}
+.platform-preview-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 13px;font-size:11px;color:var(--muted);background:var(--card)}
+.study-search-overlay .modal{width:min(840px,100%);padding:20px;border-radius:26px;display:flex;flex-direction:column;min-height:0}
+.study-search-overlay .modal-header{margin-bottom:14px;flex:none}.study-search-overlay .search-field{margin-bottom:14px;min-height:48px;border-radius:15px;flex:none}
+.study-search-overlay .modal>section,.study-search-overlay .search-results{min-height:0;overflow:auto;overscroll-behavior:contain}
+.study-search-overlay .library-result{box-shadow:none;border-radius:16px;padding:14px;text-align:left}.study-search-overlay .library-result strong{display:flex;gap:8px;align-items:center;font-weight:550}
+.study-search-overlay .library-index-tools{padding:8px 0}.study-search-overlay .library-index-status{font-size:11px}
+.search-category{font-size:11px;color:var(--muted);padding:15px 4px 5px}
+.study-search-overlay .search-results>button{padding:14px 8px;border-radius:14px;margin:3px 0;min-height:60px;width:100%;text-align:left}
+.study-search-overlay .search-results>button:active{background:var(--surface-soft)}
+.chat-progress-pill{position:fixed;right:18px;bottom:82px;z-index:100;display:flex;align-items:center;gap:8px;border:1px solid var(--accent-line);border-radius:30px;padding:12px 17px;background:var(--card);color:var(--accent);box-shadow:0 5px 20px #0001;font-size:12px}
+@media(max-width:599px){.app-shell .app-header{padding-inline:12px;gap:7px}.app-shell .app-header .header-search{font-size:12px}.study-search-overlay{padding:0;align-items:stretch}.study-search-overlay .modal{width:100%;height:100dvh;max-height:100dvh;border-radius:0;padding:14px}.study-search-overlay .sheet-handle{display:none}.study-search-overlay .library-index-tools{flex-wrap:wrap}.study-search-overlay .library-index-tools>.choice-trigger{flex-basis:100%}}
+@media(max-height:500px){.workspace-pad .workspace-pane-label{height:32px;min-height:32px}.workspace-pad .app-content{padding:10px!important}.workspace-pad .workspace-rail{padding:5px;gap:5px}.workspace-pad .workspace-rail nav>button{min-height:42px;gap:2px}.workspace-pad .workspace-rail>nav{gap:1px}.platform-preview-card .document-preview-canvas{height:190px}.study-search-overlay .modal{padding:12px}.study-search-overlay .modal-header{margin-bottom:8px}}
+@media(prefers-reduced-motion:no-preference){.app-shell .header-search,.workspace-pane-label,.ai-preset-strip button{transition:background .15s,transform .15s}.ai-preset-strip button:active{transform:scale(.97)}}
+
+.study-search-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:0 2px 10px}
+.study-search-overlay .study-search-body>section,.study-search-overlay .study-search-body>.search-results{overflow:visible}
+.study-search-overlay .study-search-body .section-heading{margin-top:22px;margin-bottom:8px}
+.study-search-overlay .study-search-body .section-heading h2{font-size:13px}
+.study-search-overlay .search-category{padding-top:2px}
+.search-preparation{font-size:11px;color:var(--muted);padding:9px 0}
+.search-preparation summary{cursor:pointer;min-height:30px;line-height:30px}
+.study-chat-dock{z-index:25}
+.has-study-dock .native-runtime .learning-layout{display:block}
+.has-study-dock .native-runtime .learning-player{position:static}
+.has-study-dock .native-runtime .learning-materials{border-left:0;padding-left:0;margin-top:20px}
+.has-study-dock .native-runtime .dashboard-layout{grid-template-columns:minmax(0,1fr)}
+.has-study-dock .native-runtime .course-grid,.has-study-dock .native-runtime .recording-course-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+/* Reserve the composer before secondary tools in short split/keyboard windows. */
+.study-ai-overlay .modal{height:min(880px,calc(100vh - 24px));height:min(880px,calc(100dvh - 24px));min-height:0;overflow:hidden}
+.study-ai-overlay .modal>.study-chat{flex:1;height:auto;min-height:0}
+.study-ai-overlay .modal-header,.study-ai-overlay .sheet-handle{flex:none}
+.study-ai-overlay .study-chat .ai-messages{min-height:0!important}
+@media(max-height:420px){
+ .study-ai-overlay{padding:4px;align-items:center}
+ .study-ai-overlay .modal{height:calc(100vh - 8px);height:calc(100dvh - 8px);max-height:calc(100dvh - 8px);padding:8px 12px;border-radius:20px}
+ .study-ai-overlay .modal-header{padding:0;margin:0 0 4px;min-height:32px}
+ .study-ai-overlay .modal-header h2{font-size:14px}
+ .study-ai-overlay .modal-header .icon-button{height:32px;width:32px;min-height:32px}
+ .study-ai-overlay .modal-header p,.study-ai-overlay .sheet-handle,.study-ai-overlay .ai-context-bar,.study-ai-overlay .chat-history-tools,.study-ai-overlay .study-frame-thumb,.study-ai-overlay .ai-preset-strip,.study-ai-overlay .study-resume-actions,.study-ai-overlay .classroom-symbols{display:none}
+ .study-ai-overlay .study-chat{gap:4px}
+ .study-ai-overlay .study-context-chip{padding:3px 8px;font-size:10px;flex-wrap:nowrap;overflow:hidden;white-space:nowrap}
+ .study-ai-overlay .study-context-chip small{overflow:hidden;text-overflow:ellipsis}
+ .study-ai-overlay .study-compose{padding:4px;border-radius:15px}
+ .study-ai-overlay .study-compose textarea{min-height:40px;max-height:60px;padding:5px}
+}

@@ -3,7 +3,7 @@ import {cleanup,fireEvent,render,screen} from '@testing-library/react';
 vi.mock('./CanvasWater',()=>({createCanvasWater:()=>({setFill:vi.fn(),impulse:vi.fn(),dispose:vi.fn()})}));
 import App from './App';
 import {accountScope,decodeLecture,decodePage} from './pageMemory';
-beforeEach(()=>{localStorage.clear();window.scrollTo=vi.fn();vi.useFakeTimers();});
+beforeEach(()=>{Object.defineProperty(window,'innerWidth',{value:393,configurable:true});localStorage.clear();window.scrollTo=vi.fn();vi.useFakeTimers();});
 afterEach(()=>{cleanup();vi.useRealTimers();});
 describe('page memory',()=>{
   it('keeps course section, search and scroll when switching pages and after restarting',()=>{

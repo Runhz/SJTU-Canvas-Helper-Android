@@ -1,0 +1,58 @@
+/* Shared, compact controls: the content keeps the space, actions keep a clear target. */
+.study-chat .study-compose{padding:6px;gap:5px;border-radius:17px;box-shadow:none}
+.study-chat .study-compose .compose-main{display:flex;align-items:center;gap:5px;min-width:0;flex-wrap:nowrap}
+.study-chat .compose-main .study-compose-input{flex:1;min-width:0}
+.study-chat .study-compose textarea{height:38px;min-height:38px;max-height:38px;line-height:22px;padding:8px 7px;resize:none;font-size:14px}
+.study-chat .study-compose textarea::placeholder{color:var(--muted);opacity:.85}
+.study-chat .study-compose .compose-main>.compose-expand{width:32px;min-width:32px;height:34px;min-height:34px;padding:0;align-self:center;display:grid;place-items:center;border:1px solid var(--line);border-radius:10px;background:var(--surface-soft)}
+.study-chat .study-compose .compose-main>button[aria-label="发送问题"],.study-chat .study-compose .compose-main>button[aria-label="停止生成"]{width:36px;height:36px;min-width:36px;min-height:36px;border-radius:11px;margin:0;align-self:center}
+.study-chat .study-compose.composer-expanded textarea{height:clamp(110px,26dvh,260px);min-height:90px;max-height:34dvh;transition:height .18s ease}
+.study-chat .study-compose.composer-expanded .compose-main{align-items:flex-end}
+.study-chat .study-compose.composer-expanded .compose-main>button{align-self:flex-end;margin-bottom:1px}
+.study-chat .compose-attachment{padding:4px 6px;gap:6px;background:var(--surface-soft);border:1px solid var(--line);border-radius:11px}
+.study-chat .compose-attachment img{width:48px;height:30px;border-radius:6px;object-fit:contain}
+.study-chat .compose-attachment>button:first-child{font-size:11px;gap:7px;min-height:30px}
+.study-chat .compose-attachment>.icon-button{width:28px;height:28px;min-height:28px;border-radius:8px}
+.study-chat-dock,.study-ai-overlay.resizable-chat .modal{padding:12px;border-radius:22px}
+.study-chat-dock>header,.resizable-chat .modal-header{min-height:34px;margin:0 0 6px;padding:0;border-bottom:1px solid var(--line);padding-bottom:7px}
+.resizable-chat .modal-header>div{padding-right:46px}
+.chat-window-expand{right:54px;top:12px}
+.study-chat-dock>header>.icon-button,.chat-window-expand>.icon-button,.resizable-chat .modal-header>.icon-button,.chat-toolbar>.icon-button,.chat-more>summary{width:32px;height:32px;min-height:32px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.chat-toolbar{gap:5px;min-height:38px;margin-bottom:2px;padding-bottom:5px}
+.study-chat .ai-messages{padding:5px 0 10px}
+.study-chat .chat-message.assistant{padding:10px 9px;border-radius:14px}
+.study-chat .rich-answer{font-size:14px;line-height:1.8}
+.study-continuity{gap:10px;padding:12px;background:var(--card);border-radius:16px;box-shadow:none}
+.study-continuity>svg{color:var(--accent);flex:none}
+.study-continuity .continue-question{display:inline-flex;align-items:center;justify-content:center;gap:5px;flex:none;min-height:36px;padding:8px 12px;border:1px solid var(--accent-line);border-radius:11px;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:550;white-space:nowrap}
+.continue-question:active{transform:scale(.97)}
+.native-download-actions{gap:6px;flex-wrap:wrap}
+.native-download-actions>button,.classroom-history,.video-actions>button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:34px;padding:7px 10px;border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--text);font-size:12px}
+.native-download-actions>button:last-child{color:var(--muted)}
+.download-footer{align-items:flex-start;flex-wrap:wrap;gap:10px}
+.settings-page>.page-heading{margin-bottom:18px}
+.settings-page .profile-card{padding:18px;margin-bottom:18px;max-width:none;border-radius:20px}
+.settings-page .profile-card>.text-button{padding:8px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface-soft)}
+.settings-page .appearance-picker,.settings-page .water-quality-setting{max-width:none;width:100%;border-radius:18px;box-shadow:none}
+.settings-page .water-quality-setting{padding:16px;margin:14px 0}
+.settings-page .reply-reminder-setting{padding:14px 16px;border:1px solid var(--line);background:var(--card);border-radius:18px;margin:14px 0}
+.settings-page .settings-group{max-width:none;padding:5px 14px;margin:14px 0;border-radius:20px;box-shadow:none}
+.settings-page .settings-group>button{padding:14px 2px;min-height:68px;gap:12px;align-items:center}
+.settings-page .settings-group .setting-icon{width:36px;height:36px;min-width:36px;border-radius:11px;background:var(--accent-soft);color:var(--accent)}
+.settings-page .settings-group strong{font-size:14px;font-weight:550;line-height:1.5}
+.settings-page .settings-group small{font-size:12px;line-height:1.5;margin-top:3px}
+.settings-page .privacy-note{padding:16px 4px;justify-content:flex-start;line-height:1.7}
+.floating-study{border-radius:16px}
+.floating-study-handle{min-height:30px;height:30px;padding:0 5px;gap:3px}
+.floating-study-handle>strong{font-size:11px}
+.floating-study-handle>.icon-button,.floating-study-handle>.text-button{width:28px;height:28px;min-height:28px;padding:0;border:1px solid var(--line);border-radius:8px;display:grid;place-items:center}
+.floating-study-handle>.text-button span{display:none}
+.floating-study .compact-document{gap:0;padding:0;min-height:0}
+.compact-document .document-preview-caption,.compact-document .platform-preview-footer,.compact-document .reader-actions,.compact-document .file-notes{display:none}
+.compact-document .document-preview-card{border:0;border-radius:0;box-shadow:none}
+.floating-resize{width:24px;height:24px;right:0;bottom:0;min-height:24px;border:1px solid var(--line);border-radius:8px 0 14px 0;background:var(--card)}
+.reader-tools button,.reader-pages>button{border:1px solid var(--line);background:var(--card);border-radius:10px}
+@media(min-width:1000px){.settings-page .settings-group{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px}.settings-page .settings-group>button:nth-last-child(-n+2){border-bottom:0}}
+@media(max-width:599px){.study-chat .study-compose textarea{font-size:16px}.study-continuity .continue-question{padding-inline:10px}.study-ai-overlay.resizable-chat .modal{padding:10px}.chat-window-expand{top:10px;right:52px}}
+@media(max-height:420px){.study-chat .study-compose textarea{height:34px;min-height:34px;max-height:34px;padding-block:6px}.study-chat .study-compose.composer-expanded textarea{height:25dvh;min-height:64px;max-height:30dvh}.study-chat-dock,.study-ai-overlay.resizable-chat .modal{padding:8px}.chat-window-expand{top:8px;right:50px}}
+@media(prefers-reduced-motion:reduce){.study-chat .study-compose.composer-expanded textarea{transition:none}.continue-question:active{transform:none}}

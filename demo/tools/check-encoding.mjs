@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import assert from 'node:assert/strict';
 const decoder = new TextDecoder('utf-8', { fatal: true });
-const sample = { title: '交大课程助手', reminder: '作业未提交，截止前30分钟提醒', math: '期望与方差 → 95%' };
+const sample = { title: '交大课程助手', reminder: '作业未提交，截止前30分钟提醒', math: '期望与方差 → 95%',study:{course:'高等数学',file:'中文讲义.pptx',note:'傅里叶变换与卷积定理',page:5,timeMs:65000} };
 const temp = mkdtempSync(join(tmpdir(), 'canvas-utf8-'));
 try {
   const path = join(temp, '中文配置.json');
@@ -25,6 +25,7 @@ try {
     }
   }
   scan('src');
+
   JSON.parse(decoder.decode(readFileSync('package.json')));
   assert.ok(decoder.decode(readFileSync('src/App.tsx')).includes('作业控制面板'));
   console.log(`UTF-8 PASS: Chinese JSON round-trip; no BOM; ${checked} source files; exact UI strings.`);

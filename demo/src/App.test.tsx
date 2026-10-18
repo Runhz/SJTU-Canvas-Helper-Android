@@ -1,10 +1,51 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('./CanvasWater',()=>({createCanvasWater:()=>({setFill:vi.fn(),impulse:vi.fn(),dispose:vi.fn()})}));
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen,within } from '@testing-library/react';
 import App from './App';
-beforeEach(()=>{localStorage.clear();window.scrollTo=vi.fn();vi.useFakeTimers();vi.setSystemTime(new Date('2026-10-15T08:00:00+08:00'));});
-afterEach(()=>{cleanup();vi.useRealTimers();});
+beforeEach(()=>{Object.defineProperty(window,'innerWidth',{value:393,configurable:true});localStorage.clear();window.scrollTo=vi.fn();vi.useFakeTimers();vi.stubGlobal('requestAnimationFrame',(callback:FrameRequestCallback)=>setTimeout(()=>callback(0),0));vi.stubGlobal('cancelAnimationFrame',clearTimeout);vi.setSystemTime(new Date('2026-10-15T08:00:00+08:00'));});
+afterEach(()=>{cleanup();vi.useRealTimers();vi.unstubAllGlobals();});
 describe('演示主流程',()=>{
+  it('collapses an active dual workspace while system split shrinks, then restores both pages',()=>{
+    Object.defineProperty(window,'innerWidth',{value:1200,configurable:true});
+    const view=render(<App layoutPreview/>);
+    fireEvent.click(screen.getByRole('button',{name:'选中右栏'}));
+    fireEvent.click(within(screen.getByRole('navigation',{name:'左侧导航'})).getByRole('button',{name:'课程'}));
+    Object.defineProperty(window,'innerWidth',{value:500,configurable:true});fireEvent(window,new Event('resize'));act(()=>vi.advanceTimersByTime(20));
+    expect(view.container.querySelectorAll('.app-shell')).toHaveLength(1);
+    expect(screen.getByRole('region',{name:'右栏 课程'})).toBeTruthy();
+    expect(view.container.querySelector('.tablet-layout')).toBeNull();
+    expect(screen.queryByRole('button',{name:'切换为双栏'})).toBeNull();
+    Object.defineProperty(window,'innerWidth',{value:1200,configurable:true});fireEvent(window,new Event('resize'));act(()=>vi.advanceTimersByTime(20));
+    expect(view.container.querySelectorAll('.app-shell')).toHaveLength(2);
+    expect(screen.getByRole('region',{name:'左栏 录播'})).toBeTruthy();expect(screen.getByRole('region',{name:'右栏 课程'})).toBeTruthy();
+  });
+  it('restores the original Pad shell after closing A split instead of stretching a pane',()=>{
+    Object.defineProperty(window,'innerWidth',{value:1200,configurable:true});
+    const view=render(<App layoutPreview/>);expect(view.container.querySelectorAll('.app-shell')).toHaveLength(2);
+    fireEvent.click(screen.getByRole('button',{name:'选中右栏'}));fireEvent.click(screen.getByRole('button',{name:'切换为单栏'}));
+    expect(view.container.querySelector('.app-shell.tablet-layout')).toBeTruthy();expect(view.container.querySelector('.app-header')).toBeNull();expect(view.container.querySelector('.bottom-nav')).toBeTruthy();expect(screen.getByRole('button',{name:'切换为双栏'}).closest('nav')).toBeTruthy();expect(view.container.querySelector('.workspace-rail')).toBeNull();expect(view.container.querySelector('.workspace-pane-label')).toBeNull();
+  });
+  it('also collapses and restores when only the system window height changes',()=>{
+    const height=innerHeight;Object.defineProperty(window,'innerWidth',{value:1000,configurable:true});Object.defineProperty(window,'innerHeight',{value:700,configurable:true});
+    try{const view=render(<App layoutPreview/>);fireEvent.click(screen.getByRole('button',{name:'选中右栏'}));
+      Object.defineProperty(window,'innerHeight',{value:250,configurable:true});fireEvent(window,new Event('resize'));act(()=>vi.advanceTimersByTime(20));
+      expect(view.container.querySelectorAll('.app-shell')).toHaveLength(1);expect(screen.getByRole('region',{name:'右栏 助手'})).toBeTruthy();expect(view.container.querySelector('.app-header')).toBeNull();
+      Object.defineProperty(window,'innerHeight',{value:500,configurable:true});fireEvent(window,new Event('resize'));act(()=>vi.advanceTimersByTime(20));
+      expect(view.container.querySelectorAll('.app-shell')).toHaveLength(2);expect(screen.getByRole('region',{name:'左栏 录播'})).toBeTruthy();
+    }finally{Object.defineProperty(window,'innerHeight',{value:height,configurable:true});}
+  });
+  it('Pad toggles immediately and shared navigation changes only the selected pane',()=>{
+    const original=innerWidth;Object.defineProperty(window,'innerWidth',{value:1200,configurable:true});
+    try{
+      const view=render(<App/>);expect(view.container.querySelectorAll('.app-shell')).toHaveLength(1);
+      fireEvent.click(screen.getByRole('button',{name:'切换为双栏'}));
+      expect(view.container.querySelectorAll('.app-shell')).toHaveLength(2);
+      fireEvent.click(screen.getByRole('button',{name:'选中右栏'}));fireEvent.click(within(screen.getByRole('navigation',{name:'左侧导航'})).getByRole('button',{name:'课程'}));
+      expect(screen.getByRole('region',{name:'左栏 总览'})).toBeTruthy();expect(screen.getByRole('region',{name:'右栏 课程'})).toBeTruthy();
+      fireEvent.click(screen.getByRole('button',{name:'切换为单栏'}));expect(view.container.querySelectorAll('.app-shell')).toHaveLength(1);expect(screen.getByRole('region',{name:'右栏 课程'})).toBeTruthy();
+      expect(screen.queryByRole('button',{name:'提醒消息'})).toBeNull();fireEvent.click(screen.getByRole('button',{name:'总览'}));fireEvent.click(screen.getByRole('button',{name:'提醒消息'}));expect(screen.getByRole('dialog')).toBeTruthy();
+    }finally{Object.defineProperty(window,'innerWidth',{value:original,configurable:true});}
+  });
   it('长按忽略停止待办计数，刷新后保留，且能恢复',()=>{
     const {container,unmount}=render(<App/>);
     const menu=screen.getByRole('button',{name:'实验 2：Socket 编程的操作'});
@@ -29,6 +70,7 @@ describe('演示主流程',()=>{
     fireEvent.click(screen.getByRole('button',{name:'计算机网络的操作'}));
     fireEvent.click(screen.getByRole('button',{name:'恢复显示与提醒'}));
     expect(screen.getByRole('button',{name:'返回课程 0'})).toBeTruthy();
+    fireEvent.click(screen.getByRole('button',{name:'总览'}));
     fireEvent.click(screen.getByRole('button',{name:'提醒消息'}));
     const selects=screen.getAllByRole('button',{name:'学期筛选'});
     expect(selects[selects.length-1].textContent).toBe('所有学期');
