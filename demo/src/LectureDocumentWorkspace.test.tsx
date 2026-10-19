@@ -19,7 +19,7 @@ describe('movable lecture document',()=>{
   it('attaches the actual lecture position and nearby subtitles to a document screenshot',async()=>{
     const ask=vi.fn();render(<LectureDocumentWorkspace scope="desk-b" pane="left" recording={recording} course={course} loadFiles={vi.fn()} lines={[{bg:190000,ed:196000,res:'电压有限时，电流连续。'},{bg:210000,ed:216000,res:'后面的结论'}]} onAi={ask}><div>录播</div></LectureDocumentWorkspace>);
     fireEvent.click(screen.getByRole('button',{name:'打开课件'}));fireEvent.click(await screen.findByRole('button',{name:/电路课件.pptx/}));await waitFor(()=>expect((screen.getByRole('button',{name:'截图提问'}) as HTMLButtonElement).disabled).toBe(false));fireEvent.click(screen.getByRole('button',{name:'截图提问'}));
-    await waitFor(()=>expect(ask).toHaveBeenCalledWith('电路课件.pptx',{mode:'materials',args:expect.objectContaining({file:{id:42},resourceId:'canvas:201',positionMs:195000,text:expect.stringContaining('电压有限'),timePoints:[190,195],forceModal:true})}));expect(JSON.stringify(ask.mock.calls)).not.toContain('后面的结论');
+    await waitFor(()=>expect(ask).toHaveBeenCalledWith('电路课件.pptx',{mode:'materials',args:expect.objectContaining({file:{id:42},resourceId:'canvas:201',positionMs:195000,text:expect.stringContaining('电压有限'),timePoints:[190,195],forceModal:true})}));expect(ask.mock.calls[0][1].args.text).not.toContain('后面的结论');expect(ask.mock.calls[0][1].args.lectureBackground.lines).toHaveLength(2);
   });
   it('clamps movable windows after both horizontal and vertical system resizing',()=>{
     const box=clampFloating({x:1100,y:700,width:600,height:600},393,280);expect(box).toEqual({x:8,y:8,width:377,height:264});expect(clampFloating({...box,x:-500,y:-500,width:100,height:100},800,600)).toEqual({x:8,y:8,width:280,height:220});

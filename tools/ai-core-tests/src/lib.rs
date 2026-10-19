@@ -1,11 +1,13 @@
 #![allow(dead_code)]
 #[path="../../../src-tauri/src/client/file_parser/office.rs"]mod office;
 #[path="../../../src-tauri/src/ai_context.rs"]mod context;
+use context as ai_context;
 #[path="../../../src-tauri/src/ai_transport.rs"]mod transport;
 #[path="../../../src-tauri/src/model_capabilities.rs"]mod capabilities;
 #[path="../../../src-tauri/src/learning_context.rs"]mod learning_context;
 #[path="../../../src-tauri/src/client/file_parser/pdf_text.rs"]mod pdf_text;
 #[cfg(test)]mod document_checks;
+#[cfg(test)]mod workflow_checks;
 #[cfg(test)]mod tests{
     use super::*;
     use std::{io::{Cursor,Write},sync::Arc};

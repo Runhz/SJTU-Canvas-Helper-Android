@@ -16,7 +16,7 @@ describe('study attachment selection',()=>{
   it('does not transmit an unchecked image or old classroom text to the API',async()=>{
     const original={mode:'materials',args:{text:'不得发送的旧字幕',screenshot:'data:image/jpeg;base64,OLD',timePoints:[999],resourceId:'canvas:1'}};
     const source={key:'new',name:'选定字幕.txt',kind:'subtitle' as const,courseId:'1',resourceId:'canvas:1',mime:'text/plain',text:'选定字幕',lines:[{bg:1000,ed:2000,res:'选定字幕'}]};
-    const result=await apiPayload([source],original,'demo');expect(result.args.screenshot).toBeUndefined();expect(result.args.text).not.toContain('旧字幕');expect(result.args.timePoints).toEqual([1]);expect(result.args.text).toContain('#video=canvas%3A1&t=1');
+    const result=await apiPayload([source],original,'demo');expect(result.args.screenshot).toBeUndefined();expect(result.args.excludePreviousImage).toBe(true);expect(result.args.text).not.toContain('旧字幕');expect(result.args.timePoints).toEqual([1]);expect(result.args.text).toContain('#video=canvas%3A1&t=1');
   });
   it('retains the original single-file assistant and sends stable IDs for multiple files',async()=>{
     const files=seedSources('课件.pptx',{mode:'file',args:{file:{id:42},courseId:'7'}});

@@ -23,6 +23,7 @@ export function publicFiles() {
   const docs=new Set(['BUILDING.md','RELEASING.md','ACCEPTANCE.md','RELEASE_0.4.0.md','RELEASE_0.5.0.md','PLAN_0.5.0.md','PLAN_0.5.1.md','RELEASE_0.5.1.md','PLAN_0.5.2.md','RELEASE_0.5.2.md','RELEASE_0.5.3.md','RELEASE_0.5.4.md','RELEASE_0.8.4.md','PLAN_WATER_FLUID.md','WATER_FLUID.md']);
   const tools=new Set(['android-ui-probe.cjs','build-mobile.ps1','build-android.ps1','public-source.mjs','public-source.test.mjs','check-public-source.mjs','export-open-source.mjs']);
   docs.add('RELEASE_0.8.7.md');
+  docs.add('RELEASE_0.8.9.md');
   return candidateFiles().filter(p=> {
     if (rootFiles.has(p)) return true;
     if (p.startsWith('.github/')) return !p.startsWith('.github/workflows/windows-portable/');

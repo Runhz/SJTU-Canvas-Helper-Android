@@ -128,14 +128,14 @@ export function NativeRecordings({pane='left',live,courses,allCourses,term,setTe
     if(!selected)return;
     const lines=materials?.lines||[],resourceId=`${selected.source}:${selected.id}`;
     const payload=lecturePayload(selected.title,resourceId,selected.courseId,at,lines,screenshot);payload.args.recording=selected;
-    if(summary){payload.args.text=materials?.text||'';payload.args.timePoints=lines.map(l=>Math.floor(l.bg/1000));payload.args.subtitleLines=lines;payload.args.contextLabel='本堂资料';payload.args.initialQuestion='请总结本堂课的知识框架、重点和易错点，引用已有时间点。'}
-    else if(selectedOnly||subtitleScope==='selected'){
+    if(summary){payload.args.readMode='full';payload.args.subtitleScope='full';delete payload.args.lectureBackground;payload.args.text=selectedLectureText(lines,lines.map((_,i)=>i),selected.title,resourceId)||materials?.text||'';payload.args.timePoints=lines.map(l=>Math.floor(l.bg/1000));payload.args.subtitleLines=lines;payload.args.contextLabel='本堂资料';payload.args.initialQuestion='请总结本堂课的知识框架、重点和易错点，引用已有时间点。'}
+    else if(selectedOnly||subtitleScope==='selected'){delete payload.args.lectureBackground;payload.args.subtitleScope='selected';
       const valid=selectedLines.filter(i=>!!lines[i]);
       if(!valid.length&&!screenshot){notify('请先选择要提问的字幕');return}
       payload.args.text=valid.length?selectedLectureText(lines,valid,selected.title,resourceId):'';payload.args.timePoints=valid.map(i=>Math.floor(lines[i].bg/1000));payload.args.subtitleLines=valid.map(i=>lines[i]);payload.args.contextLabel=valid.length?'所选字幕':'仅当前画面'
     }
-    else if(subtitleScope==='none'){payload.args.text='';payload.args.timePoints=[];payload.args.subtitleLines=[];payload.args.contextLabel=screenshot?'仅当前画面':'自由提问'}
-    if(!String(payload.args.text||'').trim()&&!screenshot&&subtitleScope!=='none'){notify('请先播放视频，或等待字幕加载');return;}
+    else if(subtitleScope==='none'){delete payload.args.lectureBackground;payload.args.subtitleScope='none';payload.args.text='';payload.args.timePoints=[];payload.args.subtitleLines=[];payload.args.contextLabel=screenshot?'仅当前画面':'自由提问'}
+    if(!String(payload.args.text||'').trim()&&!screenshot&&!(payload.args.lectureBackground as {lines?:unknown[]}|undefined)?.lines?.length&&subtitleScope!=='none'){notify('请先播放视频，或等待字幕加载');return;}
     void runtime.native('playerControl',{action:'pause',resourceId}).catch(()=>{});
     onAi(selected.title+' · 课堂问答',payload);
   }
@@ -164,7 +164,7 @@ export function NativeRecordings({pane='left',live,courses,allCourses,term,setTe
       {section==='subtitles'&&<>
         {!!materials?.lines.length&&<div className="button-row subtitle-downloads"><button className="button secondary" onClick={()=>downloadSubtitle('srt')}><ArrowDownToLine size={16}/>下载 SRT 字幕</button><button className="button secondary" onClick={()=>downloadSubtitle('txt')}>下载文字稿</button><button className="button secondary" onClick={()=>setExportRange(true)}>按时间导出</button></div>}
         <label className="search-field"><Search size={15}/><input aria-label="搜索字幕" placeholder="搜索字幕" value={subQuery} onChange={e=>setSubQuery(e.target.value)}/></label>
-        <LectureSubtitles lines={materials?.lines||[]} query={subQuery} positionMs={positionMs} onSeek={seek} selected={selectedLines} onSelected={setSelectedLines} scope={subtitleScope} onScope={setSubtitleScope} onAsk={()=>classroomAi(false,undefined,materials?.lines[selectedLines[0]]?.bg||positionMs,true)}/>
+        <LectureSubtitles lines={materials?.lines||[]} query={subQuery} positionMs={positionMs} onSeek={seek} selected={selectedLines} onSelected={setSelectedLines} scope={subtitleScope} onScope={setSubtitleScope} onAsk={()=>classroomAi(false,undefined,materials?.lines[selectedLines[0]]?.bg??positionMs,true)}/>
         {!busy&&!materials?.lines.length&&<div className="notice">平台未返回可用字幕</div>}
       </>}
       <Suspense fallback={<p className="paragraph">正在打开学习资料…</p>}>{section==='slides'&&<LectureSlides lines={materials?.lines||[]} onAi={onAi} pane={pane} key={`${selected.source}:${selected.id}`} scope={accountScope(live.account)} accountId={live.account?.accountId} recording={selected} slides={materials?.slides||[]} positionMs={positionMs} course={allCourses.find(c=>c.id===selected.courseId)} loadFiles={live.files} onSeek={seek}/>} {section==='notes'&&<LectureNotebook key={`${selected.source}:${selected.id}`} scope={accountScope(live.account)} recording={selected} positionMs={positionMs} onSeek={seek}/>}</Suspense>

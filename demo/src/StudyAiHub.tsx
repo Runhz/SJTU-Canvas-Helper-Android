@@ -1,14 +1,16 @@
-import {createContext,useContext,useRef,useState,type ReactNode} from 'react';
+import {createContext,useContext,useEffect,useRef,useState,type ReactNode} from 'react';
 import type {Course} from './domain';
 import type {AiPayload} from './chatHistory';
 import {StudyMaterialPanel} from './StudyMaterialPanel';
-import {seedSources} from './studyAttachments';
 type Open=(title:string,payload:AiPayload,onApi:(payload:AiPayload)=>void)=>void;
 const Context=createContext<{open:Open;materials:Open}>({open:()=>{},materials:()=>{}});
 export const useStudyAi=()=>useContext(Context);
 export function StudyAiHub({scope,accountId,courses,loadFiles,children}:{scope:string;accountId?:string;courses:Course[];loadFiles:(course:Course,force?:boolean)=>Promise<unknown>;children:ReactNode}){
-  const route=useRef<{title:string;payload:AiPayload;onApi:(payload:AiPayload)=>void}>({title:'学习助手',payload:{mode:'agent',args:{}},onApi:()=>{}});
-  const [show,setShow]=useState(false);
-  const handlers=useRef({open:((title,payload,onApi)=>{route.current={title,payload,onApi};onApi(payload);}) as Open,materials:((title,payload,onApi)=>{route.current={title,payload,onApi};setShow(true);}) as Open});
-  return <Context.Provider value={handlers.current}>{children}{show&&<StudyMaterialPanel scope={scope} accountId={accountId} courses={courses} loadFiles={loadFiles} title={route.current.title} payload={route.current.payload} onClose={()=>setShow(false)} onDone={result=>{route.current.onApi(result.payload!);setShow(false);}}/>}</Context.Provider>;
+  type Selection={id:number;scope:string;title:string;payload:AiPayload;onApi:(payload:AiPayload)=>void};
+  const active=useRef<Selection>(),sequence=useRef(0),currentScope=useRef(scope);currentScope.current=scope;
+  const [selection,setSelection]=useState<Selection>();
+  const handlers=useRef({open:((_title,payload,onApi)=>{onApi(payload);}) as Open,materials:((title,payload,onApi)=>{const next={id:++sequence.current,scope:currentScope.current,title,payload,onApi};active.current=next;setSelection(next);}) as Open});
+  useEffect(()=>()=>{active.current=undefined},[scope]);
+  const close=(request:Selection)=>{if(active.current!==request)return false;active.current=undefined;setSelection(undefined);return true};
+  return <Context.Provider value={handlers.current}>{children}{selection?.scope===scope&&<StudyMaterialPanel key={selection.id} scope={scope} accountId={accountId} courses={courses} loadFiles={loadFiles} title={selection.title} payload={selection.payload} onClose={()=>close(selection)} onDone={result=>{if(currentScope.current===selection.scope&&close(selection)&&result.payload)selection.onApi(result.payload);}}/>}</Context.Provider>;
 }

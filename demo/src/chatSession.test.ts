@@ -1,10 +1,26 @@
 import {afterEach,beforeEach,describe,it,expect,vi} from 'vitest';
 vi.mock('./runtime',()=>({NATIVE:true,ai:vi.fn(),cancelAi:vi.fn().mockResolvedValue(undefined)}));
 import * as runtime from './runtime';
-import {newConversation,listConversations} from './chatHistory';
-import {activateChatScope,startChat,chatJob,stopChat,patchChat,flushChats} from './chatSession';
+import {newConversation,listConversations,deleteConversation} from './chatHistory';
+import {activateChatScope,startChat,chatJob,stopChat,patchChat,flushChats,forgetChat} from './chatSession';
 beforeEach(()=>{localStorage.clear();vi.clearAllMocks();activateChatScope('a')});afterEach(()=>activateChatScope('cleanup'));
 describe('foreground assistant jobs',()=>{
+  it('honors explicit image removal instead of silently reattaching an older screenshot',async()=>{
+    vi.mocked(runtime.ai).mockResolvedValue('回答');const row=newConversation('a','课堂',{mode:'materials',args:{resourceId:'canvas:1',positionMs:10000,text:'字幕',screenshot:'data:image/jpeg;base64,YQ=='}});
+    startChat(row,'看图解释');await vi.waitFor(()=>expect(chatJob(row.id)?.busy).toBe(false));const saved=chatJob(row.id)!.row;
+    startChat({...saved,payload:{...saved.payload,args:{...saved.payload.args,excludePreviousImage:true}}},'这次只看字幕');await vi.waitFor(()=>expect(chatJob(row.id)?.busy).toBe(false));
+    expect(vi.mocked(runtime.ai).mock.calls[1][1].screenshot).toBeUndefined();
+  });
+  it('does not resurrect a deleted completed job with a pending save timer',async()=>{
+    vi.mocked(runtime.ai).mockResolvedValue('回答');const row=newConversation('a','课堂',{mode:'agent',args:{}});startChat(row,'问题');await vi.waitFor(()=>expect(chatJob(row.id)?.busy).toBe(false));
+    patchChat({...chatJob(row.id)!.row,draft:'未保存草稿'});forgetChat(row.id);await deleteConversation('a',row.id);await new Promise(r=>setTimeout(r,700));expect((await listConversations('a')).some(r=>r.id===row.id)).toBe(false);expect(()=>startChat(row,'迟到的发送')).toThrow('已删除');
+  });
+  it('replaces a failed attempt anchor instead of keeping two contexts for one question',async()=>{
+    vi.mocked(runtime.ai).mockRejectedValueOnce(Error('网络中断')).mockResolvedValueOnce('已恢复');
+    const row=newConversation('a','课堂',{mode:'materials',args:{text:'第一份资料'}});startChat(row,'同一个问题');await vi.waitFor(()=>expect(chatJob(row.id)?.busy).toBe(false));
+    const failed=chatJob(row.id)!.row;startChat({...failed,payload:{mode:'materials',args:{text:'修正后的资料'}}},'同一个问题');await vi.waitFor(()=>expect(chatJob(row.id)?.busy).toBe(false));
+    expect(chatJob(row.id)?.row.turns).toHaveLength(1);expect(chatJob(row.id)?.row.turns?.[0].payload.args.text).toBe('修正后的资料');
+  });
   it('streams provider reasoning independently, preserves it on completion and in saved history',async()=>{
     vi.mocked(runtime.ai).mockImplementation(async(_m,_a,_q,emit,_h,options)=>{options?.onReasoning?.('先读取真实资料。');options?.onReasoning?.('再核对公式。');emit('最终回答');return '最终回答'});
     const row=newConversation('a','课堂',{mode:'materials',args:{text:'资料'}});startChat(row,'问题');await vi.waitFor(()=>expect(chatJob(row.id)?.busy).toBe(false));const message=chatJob(row.id)!.row.messages[1];expect(message.content).toBe('最终回答');expect(message.reasoning).toBe('先读取真实资料。再核对公式。');flushChats();const saved=await listConversations('a');expect(saved[0].messages[1].reasoning).toBe(message.reasoning);

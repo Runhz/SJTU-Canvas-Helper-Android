@@ -22,11 +22,22 @@ it('reads a specifically requested later page without downloading or reparsing t
  const first=await readQuestionMaterials(payload,'["a","i"]',new AbortController().signal,vi.fn());
  const next=await readQuestionMaterials(first,'["a","i"]',new AbortController().signal,vi.fn(),'讲解第 9—10 页的图');
  expect((next.args.documents as {images:{page:number}[]}[])[0].images.map(i=>i.page)).toEqual([9,10]);expect(runtime.readPreparedFile).toHaveBeenCalledOnce();
+ const continued=await readQuestionMaterials(next,'["a","i"]',new AbortController().signal,vi.fn(),'继续解释');expect((continued.args.documents as {images:{page:number}[]}[])[0].images.map(i=>i.page)).toEqual([9,10]);
+ const replaced=await readQuestionMaterials(next,'["a","i"]',new AbortController().signal,vi.fn(),'第 3 页呢');expect(replaced.args.documentPages).toEqual([{id:'42',courseId:'7',pages:[3]}]);expect(runtime.readPreparedFile).toHaveBeenCalledOnce();
  expect(requestedPdfPages('page 20',20)).toEqual([20]);expect(()=>requestedPdfPages('第21页',20)).toThrow('范围');expect(()=>requestedPdfPages('第1-10页',20)).toThrow('最多');
 });
 it('keeps readable text when the optional PDF image renderer fails',async()=>{
  vi.mocked(runtime.native).mockImplementation(async method=>{if(method==='documentInfo')throw Error('图像不可用');return{path:'/private/source'} as never});
  const result=await readQuestionMaterials(payload,'["a","i"]',new AbortController().signal,vi.fn());expect((result.args.documents as {text:string;coverage:string}[])[0]).toMatchObject({text:expect.stringContaining('离散变换'),coverage:expect.stringContaining('图像无法渲染')});
+});
+it('extracts a new version once rather than using a stale body for the same file ID',async()=>{
+ const original={...payload,args:{...payload.args,file:{id:42,updatedAt:'old',size:100}}};
+ const first=await readQuestionMaterials(original,'["a","i"]',new AbortController().signal,vi.fn());
+ const changed={...first,args:{...first.args,file:{id:42,updatedAt:'new',size:100}}};
+ vi.mocked(runtime.readPreparedFile).mockResolvedValueOnce({name:'测试课件.pdf',text:'新版更正后的正文'});
+ const next=await readQuestionMaterials(changed,'["a","i"]',new AbortController().signal,vi.fn());
+ expect(runtime.readPreparedFile).toHaveBeenCalledTimes(2);expect((next.args.documents as {text:string}[])[0].text).toBe('新版更正后的正文');
+ await readQuestionMaterials(next,'["a","i"]',new AbortController().signal,vi.fn());expect(runtime.readPreparedFile).toHaveBeenCalledTimes(2);
 });
 it('does not hide corruption or dispatch a cancelled read as usable material',async()=>{
  vi.mocked(runtime.readPreparedFile).mockRejectedValue(Error('文件已损坏'));

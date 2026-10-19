@@ -12,8 +12,9 @@ export function seedSources(title:string,payload:AiPayload):StudySource[]{
   const args=payload.args,courseId=String(args.courseId||''),resourceId=String(args.resourceId||''),items:StudySource[]=[];
   const file=args.file as Record<string,unknown>|undefined;
   if(file?.id)items.push(fileSource({id:String(file.id),name:String(args.fileName||title),kind:'',size:'',updated:'',raw:file},courseId));
-  if(Array.isArray(args.files))for(const file of args.files){if(file&&typeof file==='object'&&file.id)items.push(fileSource({id:String(file.id),name:String(file.name||`课程文件 ${file.id}`),kind:'',size:'',updated:'',raw:{id:Number(file.id),preparedId:file.preparedId}},String(file.courseId||courseId)));}
-  if(typeof args.text==='string'&&args.text.trim())items.push({key:`subtitles:${resourceId||title}`,name:String(args.title||title)+'.txt',kind:'subtitle',courseId,resourceId,mime:'text/plain',text:args.text,lines:Array.isArray(args.subtitleLines)?args.subtitleLines as SubtitleLine[]:undefined});
+  if(Array.isArray(args.files))for(const file of args.files){if(file&&typeof file==='object'&&file.id)items.push(fileSource({id:String(file.id),name:String(file.name||`课程文件 ${file.id}`),kind:'',size:'',updated:'',raw:{id:Number(file.id),preparedId:file.preparedId,updatedAt:file.updatedAt,size:file.size}},String(file.courseId||courseId)));}
+  const background=args.lectureBackground as {resourceId?:string;lines?:SubtitleLine[]}|undefined,lines=background?.resourceId===resourceId&&Array.isArray(background.lines)?background.lines:Array.isArray(args.subtitleLines)?args.subtitleLines as SubtitleLine[]:undefined;
+  if(typeof args.text==='string'&&args.text.trim()||lines?.length)items.push({key:`subtitles:${resourceId||title}`,name:String(args.title||title)+'.txt',kind:'subtitle',courseId,resourceId,mime:'text/plain',text:lines?.length?subtitleExport(lines,'txt'):String(args.text||''),lines});
   if(typeof args.screenshot==='string')items.push({key:`image:${resourceId}:${args.positionMs||0}`,name:String(args.title||title)+' · '+String(args.positionLabel||'截图')+'.jpg',kind:'image',courseId,resourceId,mime:'image/jpeg',image:args.screenshot});
   return items;
 }
@@ -57,15 +58,17 @@ export async function prepareSource(source:StudySource,scope:string,accountId:st
 }
 export async function apiPayload(sources:StudySource[],original:AiPayload,scope:string):Promise<AiPayload>{
   const files:Record<string,unknown>[]=[],texts:string[]=[],images:string[]=[];
+  const originalSubtitle=seedSources(String(original.args.title||'课程资料'),original).find(s=>s.kind==='subtitle');
+  const keepBackground=!!original.args.lectureBackground&&sources.some(s=>s.kind==='subtitle'&&s.key===originalSubtitle?.key);
   for(const source of sources){
-    if(source.kind==='file'){files.push({id:Number(source.resourceId),name:source.name,courseId:source.courseId,...(source.prepared?{preparedId:source.prepared.id}:{})});continue;}
+    if(source.kind==='file'){files.push({id:Number(source.resourceId),name:source.name,courseId:source.courseId,...(source.prepared?{preparedId:source.prepared.id}:{}),...(typeof source.file?.raw?.updatedAt==='string'?{updatedAt:source.file.raw.updatedAt}:{}),...(typeof source.size==='number'?{size:source.size}:{})});continue;}
     if(source.prepared){const body=await runtime.native<{text?:string;image?:string}>('studyRead',{scope,id:source.prepared.id});if(body.text)texts.push(body.text);if(body.image)images.push(body.image);}
-    else{if(source.text)texts.push(source.lines?.length?`课堂：${source.name}\n`+source.lines.map(line=>`[字幕] [${subtitleTime(line.bg)}](#video=${encodeURIComponent(source.resourceId)}&t=${Math.floor(line.bg/1000)}) ${line.res}`).join('\n'):source.text);if(source.image)images.push(source.image);}
+    else{if(source.text)texts.push(keepBackground&&source.key===originalSubtitle?.key?String(original.args.text||''):source.lines?.length?`课堂：${source.name}\n`+source.lines.map(line=>`[字幕] [${subtitleTime(line.bg)}](#video=${encodeURIComponent(source.resourceId)}&t=${Math.floor(line.bg/1000)}) ${line.res}`).join('\n'):source.text);if(source.image)images.push(source.image);}
   }
   if(images.length>1)throw Error('每次支持一张截图，请分开提问');
-  if(!sources.length)return original.mode==='agent'?original:{mode:'agent',args:{}};
+  if(!sources.length)return{mode:'agent',args:{excludePreviousImage:true}};
   const documents=Array.isArray(original.args.documents)?original.args.documents.filter(d=>files.some(f=>String(f.id)===d.id&&f.courseId===d.courseId)):[];
-  if(files.length===1&&!texts.length&&!images.length)return{mode:'file',args:{file:files[0],courseId:sources[0].courseId,fileName:sources[0].name,...(documents.length?{documents}:{})}};
-  const {screenshot:_image,text:_text,files:_files,file:_file,documents:_documents,subtitleLines:_lines,timePoints:_points,...metadata}=original.args;
-  return {mode:'materials',args:{...metadata,title:String(original.args.title||'课程资料'),resourceId:String(original.args.resourceId||`bundle:${sources.map(s=>s.resourceId||s.key).sort().join(',')}`),text:texts.join('\n\n'),files,documents,...(images[0]?{screenshot:images[0]}:{}),timePoints:sources.flatMap(source=>source.lines?.map(line=>Math.floor(line.bg/1000))||[])}};
+  if(files.length===1&&!texts.length&&!images.length)return{mode:'file',args:{file:files[0],courseId:sources[0].courseId,fileName:sources[0].name,excludePreviousImage:true,...(documents.length?{documents}:{})}};
+  const {screenshot:_image,text:_text,files:_files,file:_file,documents:_documents,subtitleLines:_lines,timePoints:_points,lectureBackground:_background,retainLectureFiles:_retain,subtitleScope:_scope,...metadata}=original.args;
+  return {mode:'materials',args:{...metadata,...(keepBackground?{lectureBackground:original.args.lectureBackground,subtitleScope:'nearby'}:{subtitleScope:sources.some(s=>s.kind==='subtitle')?'selected':'none'}),excludePreviousImage:!images.length,title:String(original.args.title||'课程资料'),resourceId:String(original.args.resourceId||`bundle:${sources.map(s=>s.resourceId||s.key).sort().join(',')}`),text:texts.join('\n\n'),files,documents,...(images[0]?{screenshot:images[0]}:{}),timePoints:sources.flatMap(source=>source.lines?.map(line=>Math.floor(line.bg/1000))||[])}};
 }

@@ -21,7 +21,7 @@ export function nearbyLecture(lines:SubtitleLine[],positionMs:number){
 }
 export function lecturePayload(title:string,resourceId:string,courseId:string,positionMs:number,lines:SubtitleLine[],screenshot?:string):AiPayload{
   const selected=nearbyLecture(lines,positionMs),points=[...new Set([...selected.map(l=>Math.floor(l.bg/1000)),Math.floor(Math.max(0,positionMs)/1000)])];
-  return{mode:'materials',args:{title,resourceId,courseId,positionMs,positionLabel:subtitleTime(positionMs),studyAssist:true,contextLabel:selected.length?`${subtitleTime(selected[0].bg)}—${subtitleTime(positionMs)}`:'当前画面',text:selected.map(l=>`[${subtitleTime(l.bg)}](#video=${encodeURIComponent(resourceId)}&t=${Math.floor(l.bg/1000)}) ${l.res}`).join('\n'),timePoints:points,subtitleLines:selected,...(screenshot?{screenshot}:{})}};
+  return{mode:'materials',args:{title,resourceId,courseId,positionMs,positionLabel:subtitleTime(positionMs),studyAssist:true,subtitleScope:'nearby',retainLectureFiles:true,lectureBackground:{title,resourceId,lines},contextLabel:selected.length?`${subtitleTime(selected[0].bg)}—${subtitleTime(positionMs)}`:'当前画面',text:selected.map(l=>`[${subtitleTime(l.bg)}](#video=${encodeURIComponent(resourceId)}&t=${Math.floor(l.bg/1000)}) ${l.res}`).join('\n'),timePoints:points,subtitleLines:selected,...(screenshot?{screenshot}:{})}};
 }
 const marker='<study_meta>';
 export function visibleAnswer(raw:string){const at=raw.indexOf(marker);if(at>=0)return raw.slice(0,at).trimEnd();for(let n=marker.length-1;n>0;n--)if(raw.endsWith(marker.slice(0,n)))return raw.slice(0,-n).trimEnd();return raw;}
@@ -29,8 +29,9 @@ export function parseStudyAnswer(raw:string,payload:AiPayload){
   const answer=visibleAnswer(raw),at=raw.indexOf(marker);let questions:string[]=[],symbols:StudySymbol[]=[];
   if(at>=0)try{const end=raw.indexOf('</study_meta>',at);const meta=JSON.parse(raw.slice(at+marker.length,end>=0?end:undefined));
     if(Array.isArray(meta.questions))questions=Array.from(new Set<string>(meta.questions.filter((q:unknown)=>typeof q==='string'&&q.trim()&&q.length<=180))).slice(0,3);
-    const source=String(payload.args.text||'');
-    if(Array.isArray(meta.symbols))symbols=meta.symbols.filter((s:StudySymbol)=>typeof s.symbol==='string'&&s.symbol.length>0&&s.symbol.length<=60&&typeof s.meaning==='string'&&s.meaning.length<=400&&typeof s.evidence==='string'&&s.evidence.length>=4&&s.evidence.length<=300&&source.includes(s.evidence)).slice(0,12).map((s:StudySymbol)=>({...s,positionMs:Number(payload.args.positionMs)||0}));
+    const background=payload.args.lectureBackground as {resourceId?:string;lines?:SubtitleLine[]}|undefined;
+    const sources=[String(payload.args.text||''),...(background?.resourceId===payload.args.resourceId&&Array.isArray(background?.lines)?background.lines.map(l=>l.res):[]),...(Array.isArray(payload.args.documents)?payload.args.documents.filter(d=>d&&typeof d.text==='string').map(d=>d.text as string):[])];
+    if(Array.isArray(meta.symbols))symbols=meta.symbols.filter((s:StudySymbol)=>s&&typeof s.symbol==='string'&&s.symbol.length>0&&s.symbol.length<=60&&typeof s.meaning==='string'&&s.meaning.length<=400&&typeof s.evidence==='string'&&s.evidence.length>=4&&s.evidence.length<=300&&sources.some(source=>source.includes(s.evidence))).slice(0,12).map((s:StudySymbol)=>({...s,positionMs:Number(payload.args.positionMs)||0}));
   }catch{}
   return{answer,questions,symbols};
 }

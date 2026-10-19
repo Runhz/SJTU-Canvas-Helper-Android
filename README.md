@@ -3,14 +3,14 @@
   <h1>Canvas 随行</h1>
   <p>课程、作业与课堂资料</p>
   <p>面向上海交通大学本部的 Android 学习助手 · 手机与平板</p>
-  <p><strong>0.8.7 预览版 · Android 10+ · ARM64 · MIT</strong></p>
+  <p><strong>0.8.9 预览版 · Android 10+ · ARM64 · MIT</strong></p>
 </div>
 
 Canvas 随行将作业截止日期、课程资料、课堂录播和 AI 问答放在同一个学习空间。基于 [SJTU-Canvas-Helper](https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper) 3.0.13 移植，采用 Tauri 2、React、Rust 与 Kotlin。非学校官方客户端，仅支持本部 `oc.sjtu.edu.cn`。
 
 这是由 [Runhz](https://github.com/Runhz) 独立维护的 **Android 手机／平板移植 fork**，与上游作者无隶属关系。Windows／桌面版请使用[原项目](https://github.com/Okabe-Rintarou-0/SJTU-Canvas-Helper)；安卓问题请在[本 fork](https://github.com/Runhz/SJTU-Canvas-Helper-Android/issues)反馈。安卓开发与版本号在 `android` 分支独立演进，保留上游版权、MIT 许可及源码历史。
 
-**最新开发预览：0.8.7。** [下载 APK](https://github.com/Runhz/SJTU-Canvas-Helper-Android/releases/tag/android-v0.8.7)，本轮自动检查、已知限制与签名说明见 [版本说明](docs/RELEASE_0.8.7.md)。尚未完成本轮真机及学校服务验收；此前由用户验收的稳定版 [0.5.4](https://github.com/Runhz/SJTU-Canvas-Helper-Android/releases/tag/android-v0.5.4) 仍保留。
+**最新开发预览：0.8.9。** [下载 APK](https://github.com/Runhz/SJTU-Canvas-Helper-Android/releases/tag/android-v0.8.9)，本轮自动检查、已知限制与签名说明见 [版本说明](docs/RELEASE_0.8.9.md)。尚未完成本轮真机及学校服务验收；此前由用户验收的稳定版 [0.5.4](https://github.com/Runhz/SJTU-Canvas-Helper-Android/releases/tag/android-v0.5.4) 仍保留。
 
 ## 看看界面
 
@@ -29,7 +29,7 @@ Canvas 随行将作业截止日期、课程资料、课堂录播和 AI 问答放
 - **课程资料**：账号隔离的目录缓存与按需刷新、课程置顶、文件搜索、后台下载与删除，以及外部打开、分享和导出。文件预览统一使用 Canvas 平台服务，支持内嵌小框和独立阅读页，不内置 Office 排版引擎。
 - **课堂学习**：圆角内嵌／全屏播放器、倍速和长按加速、机位切换、字幕跟随与开关、课件切片小窗、视频与课件主次互换、截图标记与提问。
 - **继续学习**：切换页面保留课程、课堂、筛选与滚动位置；视频切走暂停，返回停在原处，重开应用可恢复进度与播放偏好。
-- **AI 助手**：跨课程查询与按需读课件，提示词预设、追问建议、选中文字追问、截图及字幕时间上下文、对话提炼为笔记与回答提醒；支持流式回答、Markdown 与 LaTeX。PDF 页面可按需作为图片提供给视觉模型，不使用 OCR；按资料类型与问题注入阅读、推导、讲解等技能。服务返回的思考文本独立显示、默认折叠。使用自行配置的模型服务，不包含 ChatGPT 网页浏览器。
+- **AI 助手**：跨课程查询与按需读课件，提示词预设、追问建议、选中文字追问、截图及字幕时间上下文、对话提炼为笔记与回答提醒；支持流式回答、Markdown 与 LaTeX。Skill 按钮可选择、预览 10 种教学方式，默认自动选择；结合当前位置与整堂已加载字幕背景，按容量选取相关内容。课件正文及页面资料随对话保存，重新进入可以复用。PDF 页面可按需作为图片提供给视觉模型，不使用 OCR。服务返回的思考文本独立显示、默认折叠。使用自行配置的模型服务，不包含 ChatGPT 网页浏览器。
 - **对话记录**：课堂和助手页可找回、搜索并继续本机历史；自动保存草稿和已收到的回答，可新建或确认删除对话，按账号与学校用户身份隔离。
 - **笔记与搜索**：时间轴笔记、文件笔记和 AI 摘要保存在本机；支持搜索已缓存的文件正文、字幕与笔记。未准备的正文不会自动建立全文索引。
 - **手机与平板**：根据可用宽高调整布局；支持单栏和双栏，选中一栏后通过导航切换该栏，另一栏保持原页面。手机竖屏回到单栏。
@@ -48,7 +48,7 @@ npm --prefix demo run dev
 
 需要 Node 24。打开终端显示的本地地址，即可体验手机／平板原型。**网页预览是示例数据，不需要填写真实凭据。** APK 才包含学校服务连接和原生能力。
 
-安装包见 [GitHub Releases](https://github.com/Runhz/SJTU-Canvas-Helper-Android/releases)。0.8.7 上传本地构建的同一份开发签名 APK，沿用此前证书；同包名、同签名且版本号更低时可覆盖安装。开发签名不等同于正式发行签名。也可手动运行 **Build Android preview APK** 获取独立开发构建；不同环境的签名可能无法覆盖安装。Android 10 以下不支持。
+安装包见 [GitHub Releases](https://github.com/Runhz/SJTU-Canvas-Helper-Android/releases)。0.8.9 上传本地构建的同一份开发签名 APK，沿用此前证书；同包名、同签名且版本号更低时可覆盖安装。开发签名不等同于正式发行签名。也可手动运行 **Build Android preview APK** 获取独立开发构建；不同环境的签名可能无法覆盖安装。Android 10 以下不支持。
 
 ## 开发与贡献
 
