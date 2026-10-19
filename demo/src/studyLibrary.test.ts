@@ -4,6 +4,13 @@ import {fileUnits,fileVersion,getDocument,indexFile,indexLecture,listDocuments,l
 const file={id:'42',name:'中文课件.pptx',kind:'PPTX',size:'1 MB',updated:'今天',raw:{id:42,size:100,updatedAt:'2026-10-16',url:'https://host.test/private?token=SECRET',token:'SECRET'}};
 const recording={id:'201',title:'第2讲',courseId:'7',source:'canvas' as const,materialsId:8,raw:{url:'https://private.test/?token=SECRET'}};
 describe('durable learning library',()=>{
+  it('removes stale lecture indexes without touching notes and never indexes slide OCR',async()=>{
+    const scope='ocr-retirement';await indexLecture(scope,recording,[{bg:0,res:'旧字幕'}],[{ocrText:'仅在识别图中出现'}]);
+    await saveNote({id:'retained-note',scope,courseId:'7',title:'保留',body:'用户笔记',updatedAt:0});
+    expect(await searchLibrary(scope,'仅在识别图中出现',new AbortController().signal)).toEqual([]);
+    await indexLecture(scope,recording,[],[{ocrText:'仅在识别图中出现'}]);
+    expect(await listDocuments(scope)).toEqual([]);expect(await listNotes(scope)).toHaveLength(1);
+  });
   it('keeps only explicit source page numbers, with no invented PDF pages',()=>{
     expect(fileUnits('[幻灯片 1]\n第一页\n[幻灯片 5]\n第五页')).toEqual([{page:1,text:'第一页'},{page:5,text:'第五页'}]);
     expect(fileUnits('PDF continuous text')).toEqual([{text:'PDF continuous text'}]);

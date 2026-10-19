@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 mod docx;
 mod pdf;
+mod pdf_text;
 pub mod office;
 
 #[async_trait]
@@ -19,7 +20,7 @@ pub struct GenericFileParser {
 impl GenericFileParser {
     pub async fn parse(&self, data: Bytes, extension: &str) -> Result<String> {
         let extension=extension.to_ascii_lowercase();
-        if ["ppt","pptx","pptm","xlsx","xlsm","odt","odp","ods"].contains(&extension.as_str()){
+        if ["ppt","pptx","pptm","docx","xlsx","xlsm","odt","odp","ods"].contains(&extension.as_str()){
             return office::extract(&data,&extension).map_err(AppError::LLMError);
         }
         if ["txt","md","csv","json","yaml","yml","py","c","cpp","h","hpp","rs","js","ts","tsx","jsx","java","ipynb","tex","latex","xml","html","htm","log","rst","srt","vtt","sql","m","r","toml","ini"].contains(&extension.as_str()) {

@@ -8,4 +8,8 @@ describe('conversation context transport',()=>{
     await ai('materials',{text:'原始字幕'},'继续解释',()=>{},messages,{requestId:'test-context'});
     expect(invoke).toHaveBeenCalledWith('ai_chat',expect.objectContaining({messages:[...messages,{role:'user',content:'继续解释'}],requestId:'test-context'}));
   });
+  it('routes model reasoning separately and does not send old reasoning back as answer text',async()=>{
+    const reasoning=vi.fn();await ai('materials',{text:'PDF 正文'},'解释',()=>{},[{role:'assistant',content:'结论',reasoning:'不应重发的思考'}],{onReasoning:reasoning});
+    const args=invoke.mock.calls.at(-1)![1];args.onReasoning.onmessage('服务返回的思考片段');expect(reasoning).toHaveBeenCalledWith('服务返回的思考片段');expect(args.messages[0]).toEqual({role:'assistant',content:'结论'});
+  });
 });

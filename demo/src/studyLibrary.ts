@@ -27,10 +27,11 @@ async function write(storeName:string,value:StudyDocument|StudyNote){const datab
 export async function indexFile(scope:string,courseId:string,file:CourseFile,text:string){
   const value:StudyDocument={id:fileDocumentId(scope,file.id),scope,courseId,title:file.name,kind:'file',version:fileVersion(file),file:safeFile(file),units:fileUnits(text,/\.pptx?$/i.test(file.name)),updatedAt:Date.now()};await write('documents',value);return value;
 }
-export async function indexLecture(scope:string,recording:Recording,lines:{bg:number;res:string}[],slides:Record<string,any>[]){
-  const units:StudyUnit[]=[...lines.filter(l=>l.res.trim()).map(l=>({text:l.res,timeMs:l.bg})),...slides.map(s=>({text:String(s.ocrText||(s.ocr||[]).map((v:{word:string})=>v.word).join(' ')),...(String(s.createSec??'').trim()!==''&&Number.isFinite(Number(s.createSec))?{timeMs:Number(s.createSec)*1000}:{})})).filter(s=>s.text.trim())];
-  if(!units.length)return;
-  const id=JSON.stringify([scope,'lecture',recording.source,recording.id]);let hash=2166136261;for(const unit of units){const value=`${unit.timeMs}:${unit.text}`;for(let i=0;i<value.length;i++)hash=Math.imul(hash^value.charCodeAt(i),16777619)}const version=`${units.length}:${hash>>>0}`;
+export async function indexLecture(scope:string,recording:Recording,lines:{bg:number;res:string}[],_slides:Record<string,any>[]){
+  const units:StudyUnit[]=lines.filter(l=>l.res.trim()).map(l=>({text:l.res,timeMs:l.bg}));
+  const id=JSON.stringify([scope,'lecture',recording.source,recording.id]);
+  if(!units.length){const database=await db();await new Promise<void>((resolve,reject)=>{const tx=database.transaction('documents','readwrite');tx.objectStore('documents').delete(id);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error)});changed();return}
+  let hash=2166136261;for(const unit of units){const value=`${unit.timeMs}:${unit.text}`;for(let i=0;i<value.length;i++)hash=Math.imul(hash^value.charCodeAt(i),16777619)}const version=`${units.length}:${hash>>>0}`;
   const database=await db();const previous=await new Promise<StudyDocument|undefined>((resolve,reject)=>{const q=database.transaction('documents').objectStore('documents').get(id);q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)});if(previous?.version===version)return;
   await write('documents',{id,scope,courseId:recording.courseId,title:recording.title,kind:'lecture',version,recording:safeRecording(recording),units,updatedAt:Date.now()});
 }

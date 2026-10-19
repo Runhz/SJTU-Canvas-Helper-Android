@@ -18,6 +18,13 @@ async function setup(){
   await waitFor(()=>expect(screen.getByText('课堂原始字幕')).toBeTruthy());return {onAi};
 }
 describe('课堂学习页',()=>{
+  it('主动选择不附字幕时仍可进入自由提问，不偷偷附加附近字幕',async()=>{
+    const {onAi}=await setup();fireEvent.click(screen.getByRole('button',{name:'提问资料'}));fireEvent.click(screen.getByRole('button',{name:'不附字幕'}));fireEvent.click(screen.getByRole('button',{name:'问这里'}));await waitFor(()=>expect(onAi).toHaveBeenCalled());expect(onAi.mock.calls[0][1].args).toMatchObject({text:'',subtitleLines:[],contextLabel:'自由提问'});
+  });
+  it('选中字幕后直接发起提问，只附所选原文和时间范围',async()=>{
+    const {onAi}=await setup();fireEvent.click(screen.getByRole('button',{name:'选择字幕'}));fireEvent.click(screen.getByRole('button',{name:'选择字幕 1'}));fireEvent.click(screen.getByRole('button',{name:'用所选字幕提问'}));
+    expect(onAi).toHaveBeenCalledWith('测试课堂 · 课堂问答',expect.objectContaining({args:expect.objectContaining({contextLabel:'所选字幕',positionMs:1000,timePoints:[1],text:expect.stringContaining('00:00:01—00:00:04'),subtitleLines:[{bg:1000,ed:4000,res:'课堂原始字幕'}]})}));
+  });
   it.each([393,768])('字幕资料选择在宽度 %i 时通知原生视频让位，关闭后恢复',async(width)=>{
     vi.stubGlobal('innerWidth',width);
     await setup();fireEvent.click(screen.getByRole('button',{name:'播放本堂课'}));

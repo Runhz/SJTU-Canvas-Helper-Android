@@ -22,6 +22,7 @@ export function publicFiles() {
   const rootFiles=new Set(['README.md','CONTRIBUTING.md','SECURITY.md','PRIVACY.md','UPSTREAM.md','THIRD_PARTY_NOTICES.md','CHANGELOG.md','LICENSE','.gitignore','.gitattributes','.editorconfig','package.json','yarn.lock','index.html','vite.config.ts','vitest.config.ts','tsconfig.json','tsconfig.node.json','eslint.config.js']);
   const docs=new Set(['BUILDING.md','RELEASING.md','ACCEPTANCE.md','RELEASE_0.4.0.md','RELEASE_0.5.0.md','PLAN_0.5.0.md','PLAN_0.5.1.md','RELEASE_0.5.1.md','PLAN_0.5.2.md','RELEASE_0.5.2.md','RELEASE_0.5.3.md','RELEASE_0.5.4.md','RELEASE_0.8.4.md','PLAN_WATER_FLUID.md','WATER_FLUID.md']);
   const tools=new Set(['android-ui-probe.cjs','build-mobile.ps1','build-android.ps1','public-source.mjs','public-source.test.mjs','check-public-source.mjs','export-open-source.mjs']);
+  docs.add('RELEASE_0.8.7.md');
   return candidateFiles().filter(p=> {
     if (rootFiles.has(p)) return true;
     if (p.startsWith('.github/')) return !p.startsWith('.github/workflows/windows-portable/');

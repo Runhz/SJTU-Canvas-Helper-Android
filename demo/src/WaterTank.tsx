@@ -1,56 +1,32 @@
-import { useEffect, useRef, useState } from 'react';
-import { Check, Gauge } from 'lucide-react';
-import { readWaterQuality, saveWaterQuality, waterPresets, WATER_QUALITY_EVENT, WATER_QUALITY_KEY, type WaterQuality } from './waterQuality';
-import {createCanvasWater} from './CanvasWater';
+import {useEffect,useRef,useState} from 'react';
 import type {WaterHandle} from './waterMotion';
-let graphicsAvailable:boolean|null=null;
-const supportEvent='canvas-water-renderer';
-function reportGraphics(supported:boolean){graphicsAvailable=supported;window.dispatchEvent(new Event(supportEvent));}
-
-export function useWaterQuality() {
-  const [quality, setQuality] = useState<WaterQuality>(readWaterQuality);
-  useEffect(() => {
-    const update = () => setQuality(readWaterQuality());
-    const change = (event: Event) => setQuality((event as CustomEvent<WaterQuality>).detail || readWaterQuality());
-    const storage = (event: StorageEvent) => { if (event.key === WATER_QUALITY_KEY || event.key === null) update(); };
-    window.addEventListener(WATER_QUALITY_EVENT, change); window.addEventListener('storage', storage);
-    return () => { window.removeEventListener(WATER_QUALITY_EVENT, change); window.removeEventListener('storage', storage); };
-  }, []);
-  return { quality, setQuality: saveWaterQuality };
-}
-export function WaterQualityPicker() {
-  const { quality, setQuality } = useWaterQuality();
-  const [available,setAvailable]=useState(graphicsAvailable);
-  useEffect(()=>{const update=()=>setAvailable(graphicsAvailable);window.addEventListener(supportEvent,update);return()=>window.removeEventListener(supportEvent,update);},[]);
-  return <section className="water-quality-setting" aria-labelledby="water-quality-title">
-    <div className="water-setting-heading"><Gauge size={19}/><div><h3 id="water-quality-title">水缸效果</h3><p>选择流体精细度与帧率。</p></div></div>
-    <div className="water-quality-options" role="group" aria-label="水缸画质">
-      {(Object.entries(waterPresets) as [WaterQuality, typeof waterPresets[WaterQuality]][]).map(([id, preset]) => <button key={id} aria-pressed={quality === id} className={quality === id ? 'selected' : ''} onClick={() => setQuality(id)}><span>{preset.label}{quality === id && <Check size={14}/>}</span><small>{preset.detail}</small></button>)}
-    </div>
-    <small className="water-setting-footnote">{available===false?'当前使用兼容渲染':'立即生效 · 离开页面或切到后台时暂停'}</small>
-  </section>;
-}
-export default function WaterTank({ completed, total }: { completed: number; total: number }) {
+import type {PoolHandle} from './WaterPool';
+import {poolDragStrength} from './waterPool/PoolResponse';
+const previews=new Map<string,string>();
+export default function WaterTank({ completed, total,cacheKey='preview' }: { completed: number; total: number;cacheKey?:string }) {
   const host = useRef<HTMLDivElement>(null);
-  const scene = useRef<WaterHandle | null>(null);
-  const pointer = useRef({active:false,x:0});
-  const { quality } = useWaterQuality();
+  const scene = useRef<(WaterHandle&Partial<PoolHandle>) | null>(null);
+  const pointer = useRef({active:false,x:0,y:0});
   const ratio = total > 0 ? Math.min(1, Math.max(0, completed / total)) : 0;
   const value = useRef(ratio); value.current = ratio;
-  const [fallback, setFallback] = useState(true);
+  const previewKey=cacheKey+':'+(document.documentElement.dataset.theme||'light');
+  const [preview,setPreview]=useState(()=>previews.get(previewKey));
+  const [status,setStatus]=useState<'loading'|'ready'|'failed'>('loading');
   useEffect(() => {
-    setFallback(true);
-    try{if(host.current){scene.current=createCanvasWater(host.current,quality,value.current);setFallback(false);reportGraphics(true)}}catch{setFallback(true);reportGraphics(false)}
-    return()=>{scene.current?.dispose();scene.current=null;};
-  }, [quality]);
+    let active=true,raf=0;setStatus('loading');setPreview(previews.get(previewKey));
+    const failed=()=>{if(active){scene.current?.dispose();scene.current=null;setPreview(undefined);setStatus('failed')}};
+    void import('./WaterPool').then(({createWaterPool})=>{if(active&&host.current){scene.current=createWaterPool(host.current,value.current,failed);const ready=()=>{if(!active||!scene.current)return;if(host.current?.querySelector('canvas')?.dataset.waterFrames){setStatus('ready');setPreview(undefined)}else raf=requestAnimationFrame(ready)};raf=requestAnimationFrame(ready)}}).catch(failed);
+    return()=>{active=false;cancelAnimationFrame(raf);const image=(scene.current as Partial<PoolHandle>|null)?.snapshot?.();if(image){if(previews.size>=4)previews.delete(previews.keys().next().value!);previews.set(previewKey,image)}scene.current?.dispose();scene.current=null;};
+  }, [cacheKey]);
   useEffect(() => { scene.current?.setFill(ratio); }, [ratio]);
-  return <div className="water-tank" role="img" aria-label={`作业已提交 ${completed} 项，共 ${total} 项`}>
-    <div className="water-tank-stage" ref={host} aria-hidden="true" onPointerDown={event => {
-      const rect = event.currentTarget.getBoundingClientRect(); pointer.current={active:true,x:event.clientX}; event.currentTarget.setPointerCapture?.(event.pointerId); scene.current?.impulse((event.clientX - rect.left) / rect.width - .5);
+  return <div className="water-tank water-pool" role="img" aria-label={`透明水池：作业已提交 ${completed} 项，共 ${total} 项`}>
+    <div className={`water-tank-stage water-${status}`} ref={host} aria-hidden="true" onPointerDown={event => {
+      const rect = event.currentTarget.getBoundingClientRect(); pointer.current={active:true,x:event.clientX,y:event.clientY}; event.currentTarget.setPointerCapture?.(event.pointerId);if(rect.width&&rect.height)scene.current?.disturb?.((event.clientX-rect.left)/rect.width,(event.clientY-rect.top)/rect.height,.045);
     }} onPointerMove={event => {
-      if(!pointer.current.active)return; const delta=event.clientX-pointer.current.x; pointer.current.x=event.clientX; const width=event.currentTarget.getBoundingClientRect().width; if(Math.abs(delta)>1&&width>0)scene.current?.impulse(Math.max(-.5,Math.min(.5,delta/width*1.5)));
+      if(!pointer.current.active)return;const delta=Math.hypot(event.clientX-pointer.current.x,event.clientY-pointer.current.y);pointer.current.x=event.clientX;pointer.current.y=event.clientY;const rect=event.currentTarget.getBoundingClientRect();if(delta>.5&&rect.width&&rect.height)scene.current?.disturb?.((event.clientX-rect.left)/rect.width,(event.clientY-rect.top)/rect.height,poolDragStrength(delta,rect.width));
     }} onPointerUp={()=>{pointer.current.active=false}} onPointerCancel={()=>{pointer.current.active=false}}>
-      {fallback && <div className="water-tank-fallback"><div style={{ height: `${ratio * 100}%` }}/></div>}
+      {status==='loading'&&preview&&<img className="water-last-frame" src={preview} alt=""/>}
+      {status==='failed' && <div className="water-tank-fallback"><div style={{ height: `${ratio * 100}%` }}/></div>}
     </div>
     <div className="water-tank-count"><strong>{completed}<span> / {total}</span></strong><small>已提交</small></div>
   </div>;

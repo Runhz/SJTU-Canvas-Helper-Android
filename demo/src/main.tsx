@@ -16,3 +16,4 @@ ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><
 
 import './chatFocus.css';
 import './controlPolish.css';
+import './studyPolish.css';

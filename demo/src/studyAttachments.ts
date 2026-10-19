@@ -12,7 +12,7 @@ export function seedSources(title:string,payload:AiPayload):StudySource[]{
   const args=payload.args,courseId=String(args.courseId||''),resourceId=String(args.resourceId||''),items:StudySource[]=[];
   const file=args.file as Record<string,unknown>|undefined;
   if(file?.id)items.push(fileSource({id:String(file.id),name:String(args.fileName||title),kind:'',size:'',updated:'',raw:file},courseId));
-  if(Array.isArray(args.files))for(const file of args.files){if(file&&typeof file==='object'&&file.id)items.push(fileSource({id:String(file.id),name:String(file.name||`课程文件 ${file.id}`),kind:'',size:'',updated:'',raw:{id:Number(file.id)}},String(file.courseId||courseId)));}
+  if(Array.isArray(args.files))for(const file of args.files){if(file&&typeof file==='object'&&file.id)items.push(fileSource({id:String(file.id),name:String(file.name||`课程文件 ${file.id}`),kind:'',size:'',updated:'',raw:{id:Number(file.id),preparedId:file.preparedId}},String(file.courseId||courseId)));}
   if(typeof args.text==='string'&&args.text.trim())items.push({key:`subtitles:${resourceId||title}`,name:String(args.title||title)+'.txt',kind:'subtitle',courseId,resourceId,mime:'text/plain',text:args.text,lines:Array.isArray(args.subtitleLines)?args.subtitleLines as SubtitleLine[]:undefined});
   if(typeof args.screenshot==='string')items.push({key:`image:${resourceId}:${args.positionMs||0}`,name:String(args.title||title)+' · '+String(args.positionLabel||'截图')+'.jpg',kind:'image',courseId,resourceId,mime:'image/jpeg',image:args.screenshot});
   return items;
@@ -39,9 +39,9 @@ export async function prepareSource(source:StudySource,scope:string,accountId:st
   if(signal.aborted)throw Error('已取消准备');if(source.prepared)return source.prepared;
   if(!runtime.NATIVE)return {id:source.key,name:source.name,mime:source.mime,size:source.text?.length||100,kind:source.kind,courseId:source.courseId,resourceId:source.resourceId,updatedAt:Date.now()};
   if(source.kind==='file'){
-    if(!accountId)throw Error('请先连接 Canvas 账号');
     const available=await runtime.native<{items:PreparedAttachment[]}>('studyPrepared',{scope});
-    const local=available.items.find(item=>item.id===source.key);if(local)return local;
+    const local=available.items.find(item=>item.id===source.key||item.id===source.file?.raw?.preparedId);if(local)return local;
+    if(!accountId)throw Error('请先连接 Canvas 账号');
     onProgress('正在获取下载地址…');
     const plan=await runtime.api<Record<string,unknown>>('downloadPlan',{file:{id:Number(source.resourceId)}});
     if(signal.aborted)throw Error('已取消准备');
@@ -58,13 +58,14 @@ export async function prepareSource(source:StudySource,scope:string,accountId:st
 export async function apiPayload(sources:StudySource[],original:AiPayload,scope:string):Promise<AiPayload>{
   const files:Record<string,unknown>[]=[],texts:string[]=[],images:string[]=[];
   for(const source of sources){
-    if(source.kind==='file'){files.push({id:Number(source.resourceId),name:source.name,courseId:source.courseId});continue;}
+    if(source.kind==='file'){files.push({id:Number(source.resourceId),name:source.name,courseId:source.courseId,...(source.prepared?{preparedId:source.prepared.id}:{})});continue;}
     if(source.prepared){const body=await runtime.native<{text?:string;image?:string}>('studyRead',{scope,id:source.prepared.id});if(body.text)texts.push(body.text);if(body.image)images.push(body.image);}
     else{if(source.text)texts.push(source.lines?.length?`课堂：${source.name}\n`+source.lines.map(line=>`[字幕] [${subtitleTime(line.bg)}](#video=${encodeURIComponent(source.resourceId)}&t=${Math.floor(line.bg/1000)}) ${line.res}`).join('\n'):source.text);if(source.image)images.push(source.image);}
   }
   if(images.length>1)throw Error('每次支持一张截图，请分开提问');
   if(!sources.length)return original.mode==='agent'?original:{mode:'agent',args:{}};
-  if(files.length===1&&!texts.length&&!images.length)return{mode:'file',args:{file:files[0],courseId:sources[0].courseId,fileName:sources[0].name}};
-  const {screenshot:_image,text:_text,files:_files,file:_file,subtitleLines:_lines,timePoints:_points,...metadata}=original.args;
-  return {mode:'materials',args:{...metadata,title:String(original.args.title||'课程资料'),resourceId:String(original.args.resourceId||`bundle:${sources.map(s=>s.resourceId||s.key).sort().join(',')}`),text:texts.join('\n\n'),files,...(images[0]?{screenshot:images[0]}:{}),timePoints:sources.flatMap(source=>source.lines?.map(line=>Math.floor(line.bg/1000))||[])}};
+  const documents=Array.isArray(original.args.documents)?original.args.documents.filter(d=>files.some(f=>String(f.id)===d.id&&f.courseId===d.courseId)):[];
+  if(files.length===1&&!texts.length&&!images.length)return{mode:'file',args:{file:files[0],courseId:sources[0].courseId,fileName:sources[0].name,...(documents.length?{documents}:{})}};
+  const {screenshot:_image,text:_text,files:_files,file:_file,documents:_documents,subtitleLines:_lines,timePoints:_points,...metadata}=original.args;
+  return {mode:'materials',args:{...metadata,title:String(original.args.title||'课程资料'),resourceId:String(original.args.resourceId||`bundle:${sources.map(s=>s.resourceId||s.key).sort().join(',')}`),text:texts.join('\n\n'),files,documents,...(images[0]?{screenshot:images[0]}:{}),timePoints:sources.flatMap(source=>source.lines?.map(line=>Math.floor(line.bg/1000))||[])}};
 }

@@ -2,6 +2,11 @@ import {beforeEach,describe,expect,it} from 'vitest';
 import {deleteConversation,listConversations,newConversation,saveConversation,savedPayload} from './chatHistory';
 beforeEach(async()=>{await listConversations('unused');localStorage.clear();});
 describe('local conversations',()=>{
+  it('stores document bodies once while retaining older turn references for rereading',async()=>{
+    const payload={mode:'file',args:{file:{id:42},fileName:'讲义.pdf',documents:[{id:'42',courseId:'7',name:'讲义.pdf',preparedId:'opaque-source',text:'唯一文件正文',coverage:'全部文字'}]}};
+    const row=newConversation('deduplicated','讲义',payload);row.turns=[{id:'turn',messageIndex:0,payload,status:'open',createdAt:1}];await saveConversation(row);const [saved]=await listConversations('deduplicated');
+    expect(JSON.stringify(saved).match(/唯一文件正文/g)).toHaveLength(1);expect(saved.turns?.[0].payload.args.documents).toBeUndefined();expect(saved.turns?.[0].payload.args.file).toEqual({id:42,preparedId:'opaque-source'});expect(saved.payload.args.documents).toHaveLength(1);
+  });
   it('skips damaged rows without hiding intact history',async()=>{
     const row=newConversation('student-a','完整对话',{mode:'agent',args:{}});await saveConversation(row);
     localStorage.setItem('canvas-chat-v1:student-a:broken',JSON.stringify({...row,id:'broken',messages:[null]}));

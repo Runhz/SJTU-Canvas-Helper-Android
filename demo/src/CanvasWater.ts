@@ -18,14 +18,14 @@ export function createCanvasWater(host:HTMLElement,quality:WaterQuality,fill:num
     const dt=frame.dt,r=Math.min(width,height)*.435,cx=width/2,cy=height/2-2;
     const dark=document.documentElement.dataset.theme==='dark'||!!host.closest('[data-theme="dark"]');
     const turn=angleDelta(frame.roll,previousRoll);previousRoll=frame.roll;
-    velocity+=Math.max(-.2,Math.min(.2,turn))*1.8;
+    velocity+=Math.max(-.3,Math.min(.3,turn))*3.1;
     const steps=Math.max(1,Math.ceil(dt/.008));
-    for(let i=0;i<steps;i++){const h=dt/steps;velocity+=(-sway*32-velocity*4.8)*h;sway+=velocity*h;}
-    kick*=Math.exp(-dt*3.1);
+    for(let i=0;i<steps;i++){const h=dt/steps;velocity+=(-sway*26-velocity*3.5)*h;sway=Math.max(-1.2,Math.min(1.2,sway+velocity*h));}
+    kick*=Math.exp(-dt*1.75);
     if(frame.reduced){kick=sway=velocity=0;}
     const ratio=Math.min(1,Math.max(0,frame.fill)),level=-waterLevel(ratio)*r;
-    const amount=Math.sin(Math.PI*ratio),power=Math.min(.1,.001+Math.abs(kick)*.075+Math.abs(sway)*.09+frame.shock*.012)*amount;
-    const wave=(x:number)=>r*power*(Math.sin(x/r*3.6-frame.time*5.7)*.65+Math.sin(x/r*7.8+frame.time*7.1)*.22)+x*Math.max(-.12,Math.min(.12,sway+kick*.11));
+    const amount=Math.sin(Math.PI*ratio),power=Math.min(.18,.002+Math.abs(kick)*.12+Math.abs(sway)*.16+frame.shock*.032)*amount;
+    const wave=(x:number)=>r*power*(Math.sin(x/r*3.6-frame.time*5.7)*.7+Math.sin(x/r*7.8+frame.time*7.1)*.22)+x*Math.max(-.26,Math.min(.26,sway+kick*.18))*amount;
     ctx.setTransform(canvas.width/width,0,0,canvas.height/height,0,0);ctx.clearRect(0,0,width,height);
     ctx.save();ctx.translate(cx,cy);
     // A restrained contact shadow and glass volume give the sphere depth.
@@ -42,7 +42,7 @@ export function createCanvasWater(host:HTMLElement,quality:WaterQuality,fill:num
       // Reflections stay on the glass while the water moves behind them.
       ctx.rotate(frame.roll);
       const light=ctx.createLinearGradient(-r*.75,0,-r*.18,0);light.addColorStop(0,'rgba(255,255,255,0)');light.addColorStop(.3,'rgba(220,255,255,.48)');light.addColorStop(.65,'rgba(200,251,255,.04)');light.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=light;ctx.beginPath();ctx.ellipse(-r*.5,-r*.04,r*.21,r*.9,-.18,0,Math.PI*2);ctx.fill();
-      if(quality!=='eco'){ctx.strokeStyle='rgba(165,242,250,.22)';ctx.lineWidth=r*.025;ctx.beginPath();ctx.ellipse(r*.05,r*.72,r*.62,r*.14,-.08,0,Math.PI);ctx.stroke();ctx.fillStyle='rgba(227,255,255,.4)';ctx.beginPath();ctx.ellipse(r*.65,r*.44,r*.04,r*.17,.3,0,Math.PI*2);ctx.fill();}
+      if(quality!=='eco'){ctx.fillStyle='rgba(227,255,255,.32)';ctx.beginPath();ctx.ellipse(r*.65,r*.44,r*.035,r*.15,.3,0,Math.PI*2);ctx.fill();}
       ctx.restore();
       if(ratio<.999){
         const span=Math.sqrt(Math.max(0,r*r-level*level));
@@ -57,6 +57,6 @@ export function createCanvasWater(host:HTMLElement,quality:WaterQuality,fill:num
     // Fixed studio reflections across the front and the thick polished rim.
     ctx.save();ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.clip();const shine=ctx.createRadialGradient(-r*.5,-r*.55,0,-r*.5,-r*.55,r*.24);shine.addColorStop(0,'rgba(255,255,255,.88)');shine.addColorStop(.3,'rgba(255,255,255,.34)');shine.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=shine;ctx.fillRect(-r,-r,r*2,r*2);ctx.strokeStyle=dark?'rgba(224,249,255,.25)':'rgba(255,255,255,.86)';ctx.lineWidth=r*.025;ctx.beginPath();ctx.arc(0,0,r*.985,.13,Math.PI*.93);ctx.stroke();ctx.restore();
     ctx.strokeStyle=dark?'rgba(167,215,231,.28)':'rgba(135,197,213,.45)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(0,0,r*1.025,0,Math.PI*2);ctx.stroke();ctx.restore();
-  },undefined,side=>{kick=Math.max(-.7,Math.min(.7,kick+side*.8));velocity+=side*.7;});
+  },undefined,side=>{kick=Math.max(-1.4,Math.min(1.4,kick+side*1.8));velocity=Math.max(-4,Math.min(4,velocity+side*1.7));});
   return{...motion,dispose(){motion.dispose();observer.disconnect();canvas.remove();}};
 }

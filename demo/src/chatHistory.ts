@@ -36,10 +36,18 @@ export function savedPayload(payload: AiPayload): AiPayload {
   if (typeof payload.args.screenshot === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(payload.args.screenshot)) args.screenshot = payload.args.screenshot;
   if(typeof payload.args.attachmentId==='string')args.attachmentId=payload.args.attachmentId;
   else if(args.screenshot&&typeof payload.args.intentId==='string')args.attachmentId=payload.args.intentId;
-  const file = payload.args.file as { id?: unknown } | undefined;
-  if (file && (typeof file.id === 'string' || typeof file.id === 'number')) args.file = { id: file.id };
-  if(Array.isArray(payload.args.files))args.files=payload.args.files.filter(file=>file&&typeof file==='object'&&(typeof file.id==='number'||typeof file.id==='string')).map(file=>({id:file.id,...(typeof file.name==='string'?{name:file.name}:{}),...(typeof file.courseId==='string'?{courseId:file.courseId}:{})}));
+  const file = payload.args.file as { id?: unknown;preparedId?:unknown } | undefined;
+  if (file && (typeof file.id === 'string' || typeof file.id === 'number')) args.file = { id: file.id,...(typeof file.preparedId==='string'?{preparedId:file.preparedId}:{}) };
+  if(Array.isArray(payload.args.files))args.files=payload.args.files.filter(file=>file&&typeof file==='object'&&(typeof file.id==='number'||typeof file.id==='string')).map(file=>({id:file.id,...(typeof file.name==='string'?{name:file.name}:{}),...(typeof file.courseId==='string'?{courseId:file.courseId}:{}),...(typeof file.preparedId==='string'?{preparedId:file.preparedId}:{})}));
+  if(Array.isArray(payload.args.documents))args.documents=payload.args.documents.filter(d=>d&&typeof d.id==='string'&&typeof d.text==='string'&&typeof d.name==='string').slice(0,6).map(d=>({id:d.id,courseId:String(d.courseId||''),name:d.name.slice(0,300),...(typeof d.preparedId==='string'?{preparedId:d.preparedId}:{}),text:d.text.slice(0,2_000_000),coverage:String(d.coverage||'').slice(0,1000),...(Number.isInteger(d.pages)?{pages:d.pages}:{}),images:Array.isArray(d.images)?d.images.filter((i:{page:number;image:string})=>i&&Number.isInteger(i.page)&&i.page>0&&typeof i.image==='string'&&i.image.length<=2_000_000&&/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(i.image)).slice(0,3).map((i:{page:number;image:string})=>({page:i.page,image:i.image})):[]}));
   return { mode: payload.mode, args };
+}
+/** Keep file bodies once per conversation, rather than copying megabytes into every turn. */
+export function storedTurnPayload(payload:AiPayload):AiPayload{
+ const next=savedPayload(payload),docs=Array.isArray(next.args.documents)?next.args.documents:[];
+ if(next.args.file){const file=next.args.file as {id:unknown;preparedId?:string};const doc=docs.find(d=>d.id===String(file.id));if(doc?.preparedId)file.preparedId=doc.preparedId;}
+ if(Array.isArray(next.args.files))next.args.files=next.args.files.map(file=>{const doc=docs.find(d=>d.id===String(file.id));return{...file,...(doc?.preparedId?{preparedId:doc.preparedId}:{})}});
+ delete next.args.documents;return next;
 }
 export function newConversation(scope: string, title: string, payload: AiPayload): Conversation {
   const now = Date.now();
@@ -52,7 +60,7 @@ function valid(value: unknown, scope: string): value is Conversation {
 function enqueue(action: () => Promise<void>) { const result = writes.catch(() => {}).then(action); writes = result; return result; }
 export function saveConversation(value: Conversation) {
   // Capture now, rather than retaining an object that a streaming callback may replace.
-  const copy = JSON.parse(JSON.stringify({ ...value, payload: savedPayload(value.payload),turns:value.turns?.map(t=>({id:t.id,messageIndex:t.messageIndex,payload:savedPayload(t.payload),status:t.status,createdAt:t.createdAt})) })) as Conversation;
+  const copy = JSON.parse(JSON.stringify({ ...value, payload: savedPayload(value.payload),turns:value.turns?.map(t=>({id:t.id,messageIndex:t.messageIndex,payload:storedTurnPayload(t.payload),status:t.status,createdAt:t.createdAt})) })) as Conversation;
   return enqueue(async () => {
     if (typeof indexedDB === 'undefined') { localStorage.setItem(prefix + copy.scope + ':' + copy.id, JSON.stringify(copy)); return; }
     const database = await db();

@@ -51,6 +51,14 @@ impl CompletionEnd {
     }}
 }
 pub async fn stream(base:&str,key:&str,model:&str,messages:Value,on_text:&mut(dyn FnMut(String)+Send),on_phase:&mut(dyn FnMut(String)+Send))->Result<String>{
+    stream_with_reasoning(base,key,model,messages,on_text,on_phase,&mut |_|{}).await
+}
+fn reasoning_text(value:&Value)->String{
+    let text=content(&value["reasoning_content"]);if !text.is_empty(){return text}
+    let text=content(&value["reasoning"]);if !text.is_empty(){return text}
+    value["reasoning_details"].as_array().map(|items|items.iter().filter(|v|v["type"].as_str()!=Some("reasoning.encrypted")).filter_map(|v|v["text"].as_str().or_else(||v["summary"].as_str())).collect::<Vec<_>>().join("\n")).unwrap_or_default()
+}
+pub async fn stream_with_reasoning(base:&str,key:&str,model:&str,messages:Value,on_text:&mut(dyn FnMut(String)+Send),on_phase:&mut(dyn FnMut(String)+Send),on_reasoning:&mut(dyn FnMut(String)+Send))->Result<String>{
     if key.trim().is_empty()||model.trim().is_empty(){return Err("请先配置模型名称和 API Key".into())}
     on_phase("正在连接模型服务…".into());
     let modern=model.to_ascii_lowercase();
@@ -80,14 +88,15 @@ pub async fn stream(base:&str,key:&str,model:&str,messages:Value,on_text:&mut(dy
         return Err(status_message(status))
     }
     let is_json=response.headers().get(reqwest::header::CONTENT_TYPE).and_then(|s|s.to_str().ok()).is_some_and(|s|s.contains("application/json"));
-    if is_json{on_phase("服务返回普通响应，正在等待完整内容…".into());let body:Value=response.json().await.map_err(|_|"模型响应解析失败")?;let text=content(&body["choices"][0]["message"]["content"]);if text.is_empty(){return Err("模型没有返回正文".into())}on_text(text.clone());let mut end=CompletionEnd::default();end.observe(&body);end.validate(true)?;return Ok(text)}
-    let mut decoder=SseDecoder::default();let mut body=response.bytes_stream();let mut full=String::new();let mut end=CompletionEnd::default();let mut consume=|v:Value|->Result<()>{if v.get("error").is_some(){return Err("模型在生成中返回错误，请检查服务额度或上下文设置".into())}end.observe(&v);let delta=&v["choices"][0]["delta"];if delta.get("reasoning_content").is_some()||delta.get("reasoning").is_some(){on_phase("模型正在思考…".into())}let text=content(&delta["content"]);if !text.is_empty(){on_phase("正在回答…".into());full.push_str(&text);on_text(text);}Ok(())};
+    if is_json{on_phase("服务返回普通响应，正在等待完整内容…".into());let body:Value=response.json().await.map_err(|_|"模型响应解析失败")?;let thinking=reasoning_text(&body["choices"][0]["message"]);if !thinking.is_empty(){on_reasoning(thinking)}let text=content(&body["choices"][0]["message"]["content"]);if text.is_empty(){return Err("模型没有返回正文".into())}on_text(text.clone());let mut end=CompletionEnd::default();end.observe(&body);end.validate(true)?;return Ok(text)}
+    let mut decoder=SseDecoder::default();let mut body=response.bytes_stream();let mut full=String::new();let mut end=CompletionEnd::default();let mut consume=|v:Value|->Result<()>{if v.get("error").is_some(){return Err("模型在生成中返回错误，请检查服务额度或上下文设置".into())}end.observe(&v);let delta=&v["choices"][0]["delta"];let thinking=reasoning_text(delta);if !thinking.is_empty(){on_phase("模型正在思考…".into());on_reasoning(thinking)}let text=content(&delta["content"]);if !text.is_empty(){on_phase("正在回答…".into());full.push_str(&text);on_text(text);}Ok(())};
     while let Some(bytes)=body.next().await{for event in decoder.push(&bytes.map_err(|_|"回答连接中断，已收到的内容已保留")?)?{consume(event)?}if decoder.done{break}}
     for event in decoder.finish()?{consume(event)?}end.validate(decoder.done)?;if full.trim().is_empty(){return Err("模型没有返回正文，请检查该模型是否支持此接口".into())}Ok(full)
 }
 
 #[cfg(test)] mod tests{
     use super::*;
+    #[test]fn reasoning_is_provider_text_only_and_never_encrypted_payload(){assert_eq!(reasoning_text(&json!({"reasoning_content":"实际思考"})),"实际思考");assert_eq!(reasoning_text(&json!({"reasoning_details":[{"type":"reasoning.encrypted","text":"SECRET"},{"type":"reasoning.summary","summary":"可见摘要"}]})),"可见摘要");assert_eq!(reasoning_text(&json!({"content":"只有答案"})),"");}
     #[test] fn distinguishes_length_and_missing_terminal_from_complete(){let mut end=CompletionEnd::default();assert!(end.validate(false).unwrap_err().contains("[INCOMPLETE]"));end.observe(&json!({"choices":[{"finish_reason":"length"}]}));assert!(end.validate(true).unwrap_err().contains("生成长度"));end.observe(&json!({"choices":[{"finish_reason":"stop"}]}));assert!(end.validate(false).is_ok());}
     #[test] fn decodes_split_chinese_and_terminal_without_losing_the_tail(){let input="data: {\"choices\":[{\"delta\":{\"content\":\"完整中文尾句。\"},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n";for step in 1..16{let mut decoder=SseDecoder::default();let mut events=Vec::new();for chunk in input.as_bytes().chunks(step){events.extend(decoder.push(chunk).unwrap())}events.extend(decoder.finish().unwrap());assert!(decoder.done);assert_eq!(content(&events[0]["choices"][0]["delta"]["content"]),"完整中文尾句。");}}
 }

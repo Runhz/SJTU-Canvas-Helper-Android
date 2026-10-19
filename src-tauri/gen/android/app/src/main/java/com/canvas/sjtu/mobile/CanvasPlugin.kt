@@ -68,6 +68,7 @@ class CanvasPlugin(private val activity: Activity): Plugin(activity) {
     private val study by lazy { StudyAttachments(activity) }
     @Command fun studyPrepared(invoke:Invoke)=study.command("studyPrepared",invoke)
     @Command fun studyRead(invoke:Invoke)=study.command("studyRead",invoke)
+    @Command fun studyStageForAi(invoke:Invoke)=study.command("studyStageForAi",invoke)
     @Command fun studyForget(invoke:Invoke)=study.command("studyForget",invoke)
     @Command fun studyClear(invoke:Invoke)=study.command("studyClear",invoke)
     @Command fun studySave(invoke:Invoke)=study.command("studySave",invoke)

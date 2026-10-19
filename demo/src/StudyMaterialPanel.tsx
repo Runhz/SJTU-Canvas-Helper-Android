@@ -1,3 +1,5 @@
+import {termId,coursesForTerm} from './study';
+import {TermFilter} from './StudyControls';
 import {useEffect,useRef,useState} from 'react';
 import {Check,FileText,Image,Subtitles,Search,RefreshCw,LoaderCircle,Crop,Trash2,ArrowRight} from 'lucide-react';
 import type {Course} from './domain';
@@ -9,11 +11,14 @@ import {ImageCropper} from './ImageCropper';
 import {subtitleTime} from './study';
 import {apiPayload,fileSource,parseTime,preparedSource,prepareSource,rangedSource,seedSources,type PreparedAttachment,type StudySource} from './studyAttachments';
 import './studyMaterials.css';
+import {readQuestionMaterials} from './studyFileReader';
 
 function identity(source:StudySource){return source.kind==='file'?`file:${source.resourceId}`:source.key;}
 export function StudyMaterialPanel({scope,courses,loadFiles,accountId,title,payload,onDone,onClose}:{scope:string;courses:Course[];loadFiles:(course:Course,force?:boolean)=>Promise<unknown>;accountId?:string;title:string;payload:AiPayload;onDone:(result:{ids:string[];payload?:AiPayload})=>Promise<void>|void;onClose:()=>void}){
   const seeds=useRef(seedSources(title,payload));
   const [selected,setSelected]=useState<StudySource[]>(()=>seeds.current),[courseId,setCourseId]=useState(String(payload.args.courseId||courses[0]?.id||''));
+  const [term,setTerm]=useState(()=>{const origin=courses.find(c=>c.id===String(payload.args.courseId||''));return origin?termId(origin):coursesForTerm(courses,'current',Date.now()).length?'current':'all'});
+  const termCourses=coursesForTerm(courses,term,Date.now());
   const [prepared,setPrepared]=useState<PreparedAttachment[]>([]),[tab,setTab]=useState('course'),[query,setQuery]=useState(''),[limit,setLimit]=useState(80);
   const [error,setError]=useState(''),[busy,setBusy]=useState(false),[progress,setProgress]=useState(''),[failures,setFailures]=useState<string[]>([]),[successful,setSuccessful]=useState<string[]>([]);
   const [crop,setCrop]=useState<StudySource|null>(null),[range,setRange]=useState<StudySource|null>(null),[rangeError,setRangeError]=useState(''),[start,setStart]=useState('00:00:00'),[end,setEnd]=useState('00:00:00'),[format,setFormat]=useState<'txt'|'srt'>('txt');
@@ -21,10 +26,10 @@ export function StudyMaterialPanel({scope,courses,loadFiles,accountId,title,payl
   const recentKey=`canvas-study-recent:${scope}`;
   const [recent,setRecent]=useState<StudySource[]>(()=>{try{return JSON.parse(localStorage.getItem(recentKey)||'[]').filter((s:StudySource)=>s.kind==='file'&&s.file?.raw?.id);}catch{return[];}});
   const [loading,setLoading]=useState(false);
-  useEffect(()=>{if(!courseId&&courses.length)setCourseId(courses[0].id);},[courseId,courses.length]);
   useEffect(()=>{let active=true;if(runtime.NATIVE)void runtime.native<{items:PreparedAttachment[]}>('studyPrepared',{scope}).then(value=>{if(!active)return;setPrepared(value.items);if(!seeds.current.length){try{const ids=JSON.parse(localStorage.getItem(`canvas-study-basket:${scope}`)||'[]');const items=value.items.filter(item=>ids.includes(item.id)).map(preparedSource);setSelected(items);}catch{}}}).catch(()=>{if(active)setError('无法读取已准备资料，请重试');});return()=>{active=false;abort.current?.abort();};},[scope]);
-  useEffect(()=>{if(tab!=='course'||!courseId)return;let active=true;const course=latest.current.courses.find(c=>c.id===courseId);if(course){setLoading(true);void latest.current.loadFiles(course).catch(e=>{if(active)setError(String(e));}).finally(()=>{if(active)setLoading(false);});}return()=>{active=false;};},[courseId,tab]);
-  const course=courses.find(c=>c.id===courseId);
+  useEffect(()=>{if(tab!=='course'||!courseId||!termCourses.some(c=>c.id===courseId))return;let active=true;const course=latest.current.courses.find(c=>c.id===courseId);if(course){setLoading(true);void latest.current.loadFiles(course).catch(e=>{if(active)setError(String(e));}).finally(()=>{if(active)setLoading(false);});}return()=>{active=false;};},[courseId,tab,term]);
+  useEffect(()=>{if(!termCourses.some(c=>c.id===courseId))setCourseId(termCourses[0]?.id||'')},[term,courses,courseId]);
+  const course=termCourses.find(c=>c.id===courseId);
   const rows=tab==='ready'?prepared.map(preparedSource):tab==='recent'?[...recent,...prepared.map(preparedSource)]:[...seeds.current,...(course?.files||[]).map(file=>fileSource(file,courseId))];
   const uniqueMap=new Map<string,StudySource>();for(const row of rows)if(!uniqueMap.has(identity(row)))uniqueMap.set(identity(row),row);
   const unique=Array.from(uniqueMap.values());
@@ -34,7 +39,7 @@ export function StudyMaterialPanel({scope,courses,loadFiles,accountId,title,payl
   function remember(){const next=[...selected.filter(s=>s.kind==='file'&&!s.prepared),...recent].filter((s,i,all)=>all.findIndex(v=>identity(v)===identity(s))===i).slice(0,40).map(s=>({...s,file:s.file?{...s.file,raw:{id:Number(s.resourceId),size:s.size,updatedAt:s.file.raw?.updatedAt,mime:s.mime}}:undefined}));try{localStorage.setItem(recentKey,JSON.stringify(next));}catch{}setRecent(next);}
   async function confirm(){
     if(busy)return;const controller=new AbortController();abort.current=controller;setBusy(true);setError('');
-    try{remember();const next=await apiPayload(selected,payload,scope);if(!controller.signal.aborted)await onDone({ids:[],payload:next});}catch(e){setError(String(e).replace(/^Error: /,''));}finally{setBusy(false);}
+    try{remember();const chosen=await apiPayload(selected,payload,scope);const next=await readQuestionMaterials(chosen,scope,controller.signal,setProgress);if(!controller.signal.aborted)await onDone({ids:[],payload:next});}catch(e){if(!controller.signal.aborted)setError(String(e).replace(/^Error: /,''));}finally{setBusy(false);setProgress('');}
   }
   async function savePrepared(){
     if(busy)return;const controller=new AbortController();abort.current=controller;setBusy(true);setError('');setFailures([]);setSuccessful([]);
@@ -48,7 +53,7 @@ export function StudyMaterialPanel({scope,courses,loadFiles,accountId,title,payl
   return <Modal title="提问资料" subtitle="学习助手 · 资料上下文" wide onClose={()=>{abort.current?.abort();onClose();}}>
     <div className="study-panel"><div className="study-panel-tabs">{[{id:'course',name:'课程资料'},{id:'recent',name:'最近使用'},{id:'ready',name:'已准备'}].map(item=><button key={item.id} className={tab===item.id?'selected':''} onClick={()=>{setTab(item.id);setLimit(80);}}>{item.name}</button>)}</div>
     <div className="study-panel-grid"><div className="study-library">
-      {tab==='course'&&<div className="study-course-select"><ChoicePicker label="资料课程" value={courseId} onChange={setCourseId} options={courses.map(c=>({value:c.id,label:c.name}))}/><button className="icon-button" disabled={loading||!course} aria-label="刷新课程资料" onClick={()=>{if(course){setLoading(true);void loadFiles(course,true).catch(e=>setError(String(e))).finally(()=>setLoading(false));}}}><RefreshCw size={17} className={loading?'spin':''}/></button></div>}
+      {tab==='course'&&<><TermFilter courses={courses} value={term} onChange={setTerm}/><div className="study-course-select"><ChoicePicker label="资料课程" value={courseId} onChange={setCourseId} options={termCourses.map(c=>({value:c.id,label:c.name}))}/><button className="icon-button" disabled={loading||!course} aria-label="刷新课程资料" onClick={()=>{if(course){setLoading(true);void loadFiles(course,true).catch(e=>setError(String(e))).finally(()=>setLoading(false));}}}><RefreshCw size={17} className={loading?'spin':''}/></button></div></>}
       <label className="search-field"><Search size={16}/><input aria-label="搜索提问资料" placeholder="搜索文件或字幕" value={query} onChange={e=>{setQuery(e.target.value);setLimit(80);}}/></label>
       <div className="study-file-list" aria-label="可选资料">{visible.slice(0,limit).map(source=>{
         const checked=selected.some(s=>identity(s)===identity(source));

@@ -99,7 +99,14 @@ class EmbeddedPlayer(private val activity:MainActivity){
         val scale=web.width/value.optDouble("viewportWidth",1.0);if(!scale.isFinite()||scale<=0)return
         val webLocation=IntArray(2);val parentLocation=IntArray(2);web.getLocationOnScreen(webLocation);decor.getLocationOnScreen(parentLocation)
         val width=(value.optDouble("width")*scale).roundToInt();val height=(value.optDouble("height")*scale).roundToInt()
-        root.layoutParams=FrameLayout.LayoutParams(width.coerceAtLeast(1),height.coerceAtLeast(1)).apply{leftMargin=(value.optDouble("left")*scale).roundToInt()+webLocation[0]-parentLocation[0];topMargin=(value.optDouble("top")*scale).roundToInt()+webLocation[1]-parentLocation[1]}
+        // Scrolling changes translation, not layout: remeasuring TextureView on every
+        // JS frame queues expensive surface work and visibly trails the finger.
+        val params=root.layoutParams as? FrameLayout.LayoutParams
+        if(params==null||params.width!=width.coerceAtLeast(1)||params.height!=height.coerceAtLeast(1)||params.leftMargin!=0||params.topMargin!=0){
+            root.layoutParams=FrameLayout.LayoutParams(width.coerceAtLeast(1),height.coerceAtLeast(1))
+        }
+        root.translationX=((value.optDouble("left")*scale)+webLocation[0]-parentLocation[0]).toFloat()
+        root.translationY=((value.optDouble("top")*scale)+webLocation[1]-parentLocation[1]).toFloat()
         val clipTop=((value.optDouble("clipTop")-value.optDouble("top"))*scale).roundToInt().coerceIn(0,height.coerceAtLeast(0));val clipBottom=((value.optDouble("clipBottom")-value.optDouble("top"))*scale).roundToInt().coerceIn(0,height.coerceAtLeast(0))
         root.clipBounds=Rect(0,clipTop,width.coerceAtLeast(0),clipBottom);root.invalidateOutline()
         root.visibility=if(visible&&!uiOccluded&&clipBottom>clipTop)View.VISIBLE else View.INVISIBLE
@@ -137,6 +144,7 @@ class EmbeddedPlayer(private val activity:MainActivity){
     }
     private fun question(frame:JSONObject,full:Dialog){pause();full.dismiss();val name=if(frame.has("id"))"canvas-document-question"else"canvas-player-question";findWeb(decor)?.evaluateJavascript("window.dispatchEvent(new CustomEvent('"+name+"',{detail:"+frame.toString()+"}))",null)}
     private fun captureSlide(view:View,window:Window,done:(JSONObject?,String?)->Unit){
+        if(slidePage?.captureReady==false){done(null,"课件仍在加载，请显示完整画面后再截图");return}
         val location=IntArray(2);val bounds=Rect();if(!view.getLocalVisibleRect(bounds)||bounds.width()<2||bounds.height()<2){done(null,"请先显示课件小窗");return};view.getLocationInWindow(location);bounds.offset(location[0],location[1])
         val scale=minOf(1.0,1280.0/maxOf(bounds.width(),bounds.height()));val bitmap=android.graphics.Bitmap.createBitmap((bounds.width()*scale).roundToInt().coerceAtLeast(1),(bounds.height()*scale).roundToInt().coerceAtLeast(1),android.graphics.Bitmap.Config.ARGB_8888)
         val position=slidePage?.questionPosition?:primary?.currentPosition?:0;val resource=args.optString("resourceId")
@@ -156,6 +164,7 @@ class EmbeddedPlayer(private val activity:MainActivity){
         if(dialog!=null){dialog?.dismiss();return};val root=host?:return
         oldOrientation=activity.requestedOrientation
         (root.parent as? ViewGroup)?.removeView(root);root.clipBounds=null;root.visibility=View.VISIBLE
+        root.translationX=0f;root.translationY=0f
         primaryView?.hideController();primaryView?.useController=false
         val full=Dialog(activity,android.R.style.Theme_Black_NoTitleBar_Fullscreen);full.requestWindowFeature(Window.FEATURE_NO_TITLE);dialog=full
         val wrapper=LinearLayout(activity).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(Color.BLACK)}

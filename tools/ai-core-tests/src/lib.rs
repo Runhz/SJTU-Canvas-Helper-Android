@@ -3,6 +3,9 @@
 #[path="../../../src-tauri/src/ai_context.rs"]mod context;
 #[path="../../../src-tauri/src/ai_transport.rs"]mod transport;
 #[path="../../../src-tauri/src/model_capabilities.rs"]mod capabilities;
+#[path="../../../src-tauri/src/learning_context.rs"]mod learning_context;
+#[path="../../../src-tauri/src/client/file_parser/pdf_text.rs"]mod pdf_text;
+#[cfg(test)]mod document_checks;
 #[cfg(test)]mod tests{
     use super::*;
     use std::{io::{Cursor,Write},sync::Arc};
@@ -30,6 +33,7 @@
         assert!(data.len()>25*1024*1024);let extracted=office::extract(&data,"pptx").unwrap();assert!(extracted.chars().count()>100000);assert!(extracted.contains(&text));
     }
     #[test]fn xlsx_resolves_shared_strings(){let data=package(vec![("xl/sharedStrings.xml","<sst><si><t>中文单元格</t></si></sst>".into()),("xl/worksheets/sheet1.xml","<worksheet><row><c r='A1' t='s'><v>0</v></c><c r='B1'><v>3.14</v></c></row></worksheet>".into())]);let text=office::extract(&data,"xlsx").unwrap();assert!(text.contains("A1: 中文单元格"));assert!(text.contains("B1: 3.14"))}
+    #[test]fn docx_reads_paragraphs_and_tables_without_layout_engine(){let data=package(vec![("word/document.xml","<w:document xmlns:w='w'><w:body><w:p><w:r><w:t>中文讲义与公式</w:t></w:r></w:p><w:tbl><w:tr><w:tc><w:p><w:r><w:t>重要表格 314159</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:body></w:document>".into())]);let text=office::extract(&data,"docx").unwrap();assert!(text.contains("中文讲义"));assert!(text.contains("重要表格 314159"));}
     #[test]fn context_preserves_utf8_and_finds_late_relevant_slides(){let text="无关段落\n".repeat(5000)+"[幻灯片99] 唯一概念：拉格朗日乘子\n";let chosen=context::select(&text,"解释拉格朗日乘子",6000);assert!(chosen.text.contains("拉格朗日乘子"));assert!(chosen.used<chosen.total);assert!(chosen.text.is_char_boundary(chosen.text.len()));}
     #[test]fn sse_handles_every_byte_boundary_and_crlf(){let bytes="data: {\"choices\":[{\"delta\":{\"content\":\"中文公式\"}}]}\r\n\r\ndata: [DONE]\r\n\r\n".as_bytes();let mut parser=transport::SseDecoder::default();let mut events=Vec::new();for byte in bytes{events.extend(parser.push(&[*byte]).unwrap())}events.extend(parser.finish().unwrap());assert_eq!(events[0]["choices"][0]["delta"]["content"],"中文公式");assert!(parser.done)}
     #[test]fn endpoint_paths_preserve_service_prefix_and_do_not_duplicate_v1(){assert_eq!(transport::endpoint("https://example.test/proxy/v1/chat/completions","models").unwrap(),"https://example.test/proxy/v1/models");assert!(transport::endpoint("http://example.test/v1","models").is_err());assert!(transport::endpoint("https://user:key@example.test/v1","models").is_err())}

@@ -2,6 +2,7 @@ import {useEffect,useRef,useState} from 'react';
 import {LoaderCircle,Play,Pause,Maximize,Video,Camera,Columns2,SwitchCamera} from 'lucide-react';
 import {normalizeSlides} from './lectureSlideTimeline';
 import * as runtime from './runtime';
+import {layoutChannel} from './layoutChannel';
 export interface PlayerStatus {opened:boolean;positionMs:number;durationMs:number;playing:boolean;fullscreen:boolean;dual:boolean;resourceId:string;speed:number;camera:number}
 export function InlinePlayer({recording,obscured,resume=false,seekTo,notify,onStatus,onScreenshot,slides=[],subtitles=[]}:{subtitles?:{bg:number;ed:number;res:string}[];slides?:Record<string,unknown>[];recording:runtime.Recording;obscured:boolean;resume?:boolean;seekTo?:{id:string;positionMs:number};notify:(s:string)=>void;onStatus?:(s:PlayerStatus)=>void;onScreenshot?:(image:string,ms:number)=>void}){
   const ref=useRef<HTMLDivElement>(null),opened=useRef(false),generation=useRef(0);
@@ -29,10 +30,11 @@ export function InlinePlayer({recording,obscured,resume=false,seekTo,notify,onSt
   useEffect(()=>{if(resume&&!obscured&&!opened.current&&!triedResume.current){triedResume.current=true;void start(false);}},[resume,obscured]);
   useEffect(()=>{
     let frame=0;
-    const update=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{if(opened.current)void runtime.native('playerControl',{action:'layout',resourceId,rect:geometry(),visible:!obscured&&!document.hidden}).catch(()=>{});});};
-    const area=ref.current?.closest('.app-content');area?.addEventListener('scroll',update,{passive:true});window.addEventListener('resize',update);document.addEventListener('visibilitychange',update);
+    const channel=layoutChannel<Record<string,unknown>>(value=>runtime.native('playerControl',value));
+    const update=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{if(opened.current)channel.push({action:'layout',resourceId,rect:geometry(),visible:!covered.current&&!document.hidden});});};
+    const area=ref.current?.closest('.app-content');area?.addEventListener('scroll',update,{passive:true});window.addEventListener('resize',update);document.addEventListener('visibilitychange',update);window.visualViewport?.addEventListener('resize',update);window.visualViewport?.addEventListener('scroll',update);
     const observer=typeof ResizeObserver!=='undefined'?new ResizeObserver(update):null;if(ref.current)observer?.observe(ref.current);update();
-    return()=>{cancelAnimationFrame(frame);observer?.disconnect();area?.removeEventListener('scroll',update);window.removeEventListener('resize',update);document.removeEventListener('visibilitychange',update);};
+    return()=>{channel.dispose();cancelAnimationFrame(frame);observer?.disconnect();area?.removeEventListener('scroll',update);window.removeEventListener('resize',update);document.removeEventListener('visibilitychange',update);window.visualViewport?.removeEventListener('resize',update);window.visualViewport?.removeEventListener('scroll',update);};
   },[obscured,ready]);
   useEffect(()=>{if(!ready||obscured)return;let active=true,pending=false;const poll=()=>{if(pending||document.hidden)return;pending=true;runtime.native<PlayerStatus>('playerStatus').then(value=>{if(active&&value.resourceId===resourceId){setStatus(value);callback.current?.(value);}}).catch(()=>{}).finally(()=>{pending=false;});};void poll();const timer=setInterval(poll,400);return()=>{active=false;clearInterval(timer);};},[ready,resourceId,obscured]);
   useEffect(()=>()=>{generation.current++;opened.current=false;void runtime.native('playerControl',{action:'close',resourceId:`${recording.source}:${recording.id}`}).catch(()=>{});},[recording.id]);

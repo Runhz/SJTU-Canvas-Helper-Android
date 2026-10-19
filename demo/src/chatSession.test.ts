@@ -5,6 +5,10 @@ import {newConversation,listConversations} from './chatHistory';
 import {activateChatScope,startChat,chatJob,stopChat,patchChat,flushChats} from './chatSession';
 beforeEach(()=>{localStorage.clear();vi.clearAllMocks();activateChatScope('a')});afterEach(()=>activateChatScope('cleanup'));
 describe('foreground assistant jobs',()=>{
+  it('streams provider reasoning independently, preserves it on completion and in saved history',async()=>{
+    vi.mocked(runtime.ai).mockImplementation(async(_m,_a,_q,emit,_h,options)=>{options?.onReasoning?.('先读取真实资料。');options?.onReasoning?.('再核对公式。');emit('最终回答');return '最终回答'});
+    const row=newConversation('a','课堂',{mode:'materials',args:{text:'资料'}});startChat(row,'问题');await vi.waitFor(()=>expect(chatJob(row.id)?.busy).toBe(false));const message=chatJob(row.id)!.row.messages[1];expect(message.content).toBe('最终回答');expect(message.reasoning).toBe('先读取真实资料。再核对公式。');flushChats();const saved=await listConversations('a');expect(saved[0].messages[1].reasoning).toBe(message.reasoning);
+  });
   it('preserves every streamed character on an incomplete finish and continues with the partial answer in history',async()=>{
     vi.mocked(runtime.ai).mockImplementationOnce((_m,_a,_q,emit)=>{emit('还没写完**比');return Promise.reject(Error('[INCOMPLETE] 回答达到服务的生成长度上限'))}).mockResolvedValue('补完剩余内容');
     const row=newConversation('a','课堂',{mode:'materials',args:{resourceId:'canvas:9',positionMs:12000,text:'课堂资料'}});startChat(row,'详细解释');await vi.waitFor(()=>expect(chatJob(row.id)?.busy).toBe(false));const incomplete=chatJob(row.id)!;

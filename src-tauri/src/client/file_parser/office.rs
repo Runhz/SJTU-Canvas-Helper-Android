@@ -104,8 +104,8 @@ fn legacy_ppt(data:&[u8])->Result<String>{
 pub fn extract(data:&[u8],extension:&str)->Result<String>{
     let text=if extension=="ppt"{legacy_ppt(data)?}else{
         let mut zip=zip::ZipArchive::new(Cursor::new(data)).map_err(|_|"课件无法解压，可能已加密、损坏或扩展名不匹配")?;
-        match extension{"pptx"|"pptm"=>presentation(&mut zip),"xlsx"|"xlsm"=>spreadsheets(&mut zip),"odt"|"odp"|"ods"=>xml_text(&read_zip(&mut zip,"content.xml")?),_=>Err("不支持此 Office 格式".into())}?
+        match extension{"pptx"|"pptm"=>presentation(&mut zip),"docx"=>xml_text(&read_zip(&mut zip,"word/document.xml")?),"xlsx"|"xlsm"=>spreadsheets(&mut zip),"odt"|"odp"|"ods"=>xml_text(&read_zip(&mut zip,"content.xml")?),_=>Err("不支持此 Office 格式".into())}?
     };
     let useful=text.lines().any(|line|{let s=line.trim();!s.is_empty()&&!s.starts_with("[幻灯片 ")&&s!="[本页备注]"&&!s.starts_with("[PPT 备注区 ")&&!s.starts_with("[工作表 ")});
-    if !useful{return Err("课件没有可提取的正文，可能是纯图片课件；请先提供 OCR 文字版本".into())}Ok(text)
+    if !useful{return Err("课件没有可提取的正文，可能是纯图片课件；可用课件切片或页面截图直接向视觉模型提问".into())}Ok(text)
 }

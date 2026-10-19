@@ -18,7 +18,7 @@ describe('downloaded original and official preview',()=>{
   });
   it('opens videos directly and lets the user delete completed and failed downloads',async()=>{
     render(<NativeDownloadList tasks={[{...task,name:'课堂.mp4',resourceId:'canvas:201:0'},{...task,id:'18',name:'未完成.pdf',status:'failed'}]} scope='["student","42"]' notify={()=>{}}/>);
-    fireEvent.click(screen.getByRole('button',{name:'打开'}));expect(runtime.api).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'删除下载 课堂.mp4'}));fireEvent.click(screen.getByRole('button',{name:'删除下载 未完成.pdf'}));
+    fireEvent.click(screen.getByRole('button',{name:'打开'}));expect(runtime.api).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'删除下载 课堂.mp4'}));expect(runtime.native).not.toHaveBeenCalledWith('deleteDownload',expect.anything());fireEvent.click(screen.getByRole('button',{name:'确认删除'}));await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());fireEvent.click(screen.getByRole('button',{name:'删除下载 未完成.pdf'}));fireEvent.click(screen.getByRole('button',{name:'确认删除'}));
     expect(runtime.native).toHaveBeenCalledWith('deleteDownload',expect.objectContaining({id:'17'}));expect(runtime.native).toHaveBeenCalledWith('deleteDownload',expect.objectContaining({id:'18'}));
   });
 });

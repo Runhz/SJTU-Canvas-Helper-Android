@@ -28,6 +28,20 @@ class StudyAttachments(private val activity:Activity){
             val result:Any?=when(method){
                 "studyPrepared"->JSONObject().put("items",store.items(scope))
                 "studyRead"->store.payload(scope,args.getString("id"))
+                "studyStageForAi"->{
+                    val file=store.document(scope,args.getString("id"))
+                    val account=SecureStore(activity).activeAccount()?:error("请先连接账号")
+                    val limit=account.optLong("aiFileMaxMb",128).coerceIn(16,256)*1024*1024
+                    require(file.length() in 1..limit){"文件过大或为空，请按章节拆分或调整资料读取容量"}
+                    val token=account.optString("token").trim().replace(Regex("(?i)^Bearer\\s+"),"").replace(Regex("[\\s\u200b\ufeff]"),"")
+                    val accountKey=java.security.MessageDigest.getInstance("MD5").digest((account.getString("accountId")+":"+token).toByteArray(Charsets.UTF_8)).joinToString(""){"%02x".format(it)}
+                    val folder=File(activity.cacheDir,"ai-imports/$accountKey").apply{mkdirs()}
+                    folder.listFiles()?.filter{System.currentTimeMillis()-it.lastModified()>3600000}?.forEach{it.delete()}
+                    val staged=File(folder,java.util.UUID.randomUUID().toString()+".source")
+                    file.copyTo(staged)
+                    // The Rust reader validates this private cache boundary again and removes the copy.
+                    JSONObject().put("path",staged.canonicalPath)
+                }
                 "studyForget"->{store.forget(scope,args.getString("id"));JSONObject()}
                 "studyClear"->JSONObject().put("removed",store.clearTemporary(scope))
                 "studySave"->{
@@ -49,6 +63,7 @@ class StudyAttachments(private val activity:Activity){
                 }
                 else->error("Unknown study operation")
             }
+            verified(args)
             invoke.resolve(JSObject((result as JSONObject).toString()))
         }catch(e:Exception){invoke.reject(if(e is IllegalArgumentException&&e.message!=null&&!e.message!!.contains(" at "))e.message!!else "资料准备未完成，请检查文件、网络或可用空间后重试")}
     }}

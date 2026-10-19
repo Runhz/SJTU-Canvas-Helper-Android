@@ -1,3 +1,4 @@
+import {Modal} from './Modal';
 import {BackButton} from './BackButton';
 import {lecturePayload} from './studyAssist';
 import {LectureQuestions} from './LectureQuestions';
@@ -76,7 +77,7 @@ export function ModelPanel({live,notify,onDone}:{live:Live;notify:(s:string)=>vo
 }
 
 export function NativeDownloadList({tasks,notify,scope}:{tasks:DownloadTask[];notify:(s:string)=>void;scope?:string}){
-  const [opening,setOpening]=useState(''),alive=useRef(true);
+  const [opening,setOpening]=useState(''),[deleting,setDeleting]=useState<DownloadTask>(),[removing,setRemoving]=useState(false),alive=useRef(true);
   useEffect(()=>{alive.current=true;return()=>{alive.current=false}},[]);
   const labels={running:'下载中',queued:'等待开始',waiting:'等待网络',completed:'已完成',failed:'失败',cancelled:'已取消'};
   const action=(method:string,task:DownloadTask)=>runtime.native(method,{id:task.id,path:task.path,mime:mime(task.name)}).catch(e=>notify(String(e)));
@@ -89,8 +90,8 @@ export function NativeDownloadList({tasks,notify,scope}:{tasks:DownloadTask[];no
   return <>{tasks.map(task=><div className="download-card" key={task.id}><div className="download-card-main"><span className="download-file"><FileText size={22}/></span><div><strong>{task.name}</strong><span>{labels[task.status]}</span></div><span className={`pill ${task.status==='completed'?'green':'gray'}`}>{task.status==='running'?`${task.progress}%`:labels[task.status]}</span></div>
     {['running','waiting','queued'].includes(task.status)&&<div className="download-progress"><i style={{width:`${task.progress}%`}}/></div>}
     <div className="download-footer"><span>{task.status==='completed'?'文件已保存到本机':task.status==='failed'?`系统下载未完成（${task.reason||'未知原因'}），请返回资料页刷新后重试`:'系统负责后台传输'}</span>
-    {task.status==='completed'?<div className="native-download-actions"><button disabled={!!opening} onClick={()=>void open(task)}>{opening===task.id?<LoaderCircle size={14} className="spin"/>:<ExternalLink size={14}/>}打开</button><button onClick={()=>void action('shareFile',task)} aria-label={`分享 ${task.name}`}><Share2 size={14}/></button><button onClick={()=>void action('exportFile',task)} aria-label={`导出 ${task.name}`}><ArrowDownToLine size={14}/></button><button onClick={()=>void action('deleteDownload',task)} aria-label={`删除下载 ${task.name}`}><Trash2 size={14}/>删除</button></div>:<div className="native-download-actions">{!['failed','cancelled'].includes(task.status)&&<button onClick={()=>void action('cancelDownload',task)}>取消</button>}<button onClick={()=>void action('deleteDownload',task)} aria-label={`删除下载 ${task.name}`}><Trash2 size={14}/>删除</button></div>}</div>
-  </div>)}</>;
+    {task.status==='completed'?<div className="native-download-actions"><button disabled={!!opening} onClick={()=>void open(task)}>{opening===task.id?<LoaderCircle size={14} className="spin"/>:<ExternalLink size={14}/>}打开</button><button onClick={()=>void action('shareFile',task)} aria-label={`分享 ${task.name}`}><Share2 size={14}/></button><button onClick={()=>void action('exportFile',task)} aria-label={`导出 ${task.name}`}><ArrowDownToLine size={14}/></button><button onClick={()=>setDeleting(task)} aria-label={`删除下载 ${task.name}`}><Trash2 size={14}/>删除</button></div>:<div className="native-download-actions">{!['failed','cancelled'].includes(task.status)&&<button onClick={()=>void action('cancelDownload',task)}>取消</button>}<button onClick={()=>setDeleting(task)} aria-label={`删除下载 ${task.name}`}><Trash2 size={14}/>删除</button></div>}</div>
+  </div>)}{deleting&&<Modal title="删除下载" subtitle={deleting.name} onClose={()=>{if(!removing)setDeleting(undefined)}}><p className="paragraph">{['running','queued','waiting'].includes(deleting.status)?'将停止下载并移除本机文件。':'将移除这份本机下载文件。'}课程中的原文件会保留。</p><div className="button-row"><button className="button secondary" disabled={removing} onClick={()=>setDeleting(undefined)}>保留文件</button><button className="button primary" disabled={removing} onClick={async()=>{setRemoving(true);try{await runtime.native('deleteDownload',{id:deleting.id,path:deleting.path,mime:mime(deleting.name)});if(alive.current)setDeleting(undefined)}catch(e){notify(String(e))}finally{if(alive.current)setRemoving(false)}}}>{removing?<LoaderCircle size={15} className="spin"/>:<Trash2 size={15}/>}确认删除</button></div></Modal>}</>;
 }
 function mime(name:string){const ext=name.split('.').pop()?.toLowerCase();return ({pdf:'application/pdf',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',pptx:'application/vnd.openxmlformats-officedocument.presentationml.presentation',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',zip:'application/zip',mp4:'video/mp4',png:'image/png',jpg:'image/jpeg',txt:'text/plain',srt:'application/x-subrip'} as Record<string,string>)[ext||'']||'application/octet-stream';}
 
@@ -123,18 +124,18 @@ export function NativeRecordings({pane='left',live,courses,allCourses,term,setTe
   }
   const perform=(action:()=>Promise<unknown>)=>{action().catch(e=>notify(String(e)));};
   const seek=(positionMs:number)=>{setPlayerSeek({id:`seek-${Date.now()}-${Math.random().toString(36).slice(2)}`,positionMs});setPositionMs(positionMs);setMemory(old=>({...old,hasPlayed:true}));};
-  function classroomAi(summary=false,screenshot?:string,at=memory.positionMs){
+  function classroomAi(summary=false,screenshot?:string,at=memory.positionMs,selectedOnly=false){
     if(!selected)return;
     const lines=materials?.lines||[],resourceId=`${selected.source}:${selected.id}`;
     const payload=lecturePayload(selected.title,resourceId,selected.courseId,at,lines,screenshot);payload.args.recording=selected;
     if(summary){payload.args.text=materials?.text||'';payload.args.timePoints=lines.map(l=>Math.floor(l.bg/1000));payload.args.subtitleLines=lines;payload.args.contextLabel='本堂资料';payload.args.initialQuestion='请总结本堂课的知识框架、重点和易错点，引用已有时间点。'}
-    else if(subtitleScope==='selected'&&selectedLines.length){payload.args.text=selectedLectureText(lines,selectedLines,selected.title,resourceId);payload.args.timePoints=selectedLines.map(i=>Math.floor(lines[i].bg/1000));payload.args.subtitleLines=selectedLines.map(i=>lines[i]);payload.args.contextLabel='所选字幕'}
-    else if(subtitleScope==='none'){payload.args.text='';payload.args.timePoints=[];payload.args.subtitleLines=[];payload.args.contextLabel='仅当前画面'}
-    if(!summary&&subtitleScope==='all'){
-      const slice=(materials?.slides||[]).filter(sl=>sl.createSec!==undefined&&sl.createSec!==null&&String(sl.createSec).trim()!==''&&Number.isFinite(Number(sl.createSec))&&Number(sl.createSec)*1000<=at).sort((a,b)=>Number(a.createSec)-Number(b.createSec)).slice(-1)[0];
-      if(slice){const ocr=String(slice.ocrText||Array.isArray(slice.ocr)&&slice.ocr.map((v:{word?:string})=>v.word||'').join(' ')||'');if(ocr.trim())payload.args.text=String(payload.args.text||'')+'\n[当前课件切片] '+ocr;}
+    else if(selectedOnly||subtitleScope==='selected'){
+      const valid=selectedLines.filter(i=>!!lines[i]);
+      if(!valid.length&&!screenshot){notify('请先选择要提问的字幕');return}
+      payload.args.text=valid.length?selectedLectureText(lines,valid,selected.title,resourceId):'';payload.args.timePoints=valid.map(i=>Math.floor(lines[i].bg/1000));payload.args.subtitleLines=valid.map(i=>lines[i]);payload.args.contextLabel=valid.length?'所选字幕':'仅当前画面'
     }
-    if(!String(payload.args.text||'').trim()&&!screenshot){notify('请先播放视频，或等待字幕加载');return;}
+    else if(subtitleScope==='none'){payload.args.text='';payload.args.timePoints=[];payload.args.subtitleLines=[];payload.args.contextLabel=screenshot?'仅当前画面':'自由提问'}
+    if(!String(payload.args.text||'').trim()&&!screenshot&&subtitleScope!=='none'){notify('请先播放视频，或等待字幕加载');return;}
     void runtime.native('playerControl',{action:'pause',resourceId}).catch(()=>{});
     onAi(selected.title+' · 课堂问答',payload);
   }
@@ -163,7 +164,7 @@ export function NativeRecordings({pane='left',live,courses,allCourses,term,setTe
       {section==='subtitles'&&<>
         {!!materials?.lines.length&&<div className="button-row subtitle-downloads"><button className="button secondary" onClick={()=>downloadSubtitle('srt')}><ArrowDownToLine size={16}/>下载 SRT 字幕</button><button className="button secondary" onClick={()=>downloadSubtitle('txt')}>下载文字稿</button><button className="button secondary" onClick={()=>setExportRange(true)}>按时间导出</button></div>}
         <label className="search-field"><Search size={15}/><input aria-label="搜索字幕" placeholder="搜索字幕" value={subQuery} onChange={e=>setSubQuery(e.target.value)}/></label>
-        <LectureSubtitles lines={materials?.lines||[]} query={subQuery} positionMs={positionMs} onSeek={seek} selected={selectedLines} onSelected={setSelectedLines} scope={subtitleScope} onScope={setSubtitleScope}/>
+        <LectureSubtitles lines={materials?.lines||[]} query={subQuery} positionMs={positionMs} onSeek={seek} selected={selectedLines} onSelected={setSelectedLines} scope={subtitleScope} onScope={setSubtitleScope} onAsk={()=>classroomAi(false,undefined,materials?.lines[selectedLines[0]]?.bg||positionMs,true)}/>
         {!busy&&!materials?.lines.length&&<div className="notice">平台未返回可用字幕</div>}
       </>}
       <Suspense fallback={<p className="paragraph">正在打开学习资料…</p>}>{section==='slides'&&<LectureSlides lines={materials?.lines||[]} onAi={onAi} pane={pane} key={`${selected.source}:${selected.id}`} scope={accountScope(live.account)} accountId={live.account?.accountId} recording={selected} slides={materials?.slides||[]} positionMs={positionMs} course={allCourses.find(c=>c.id===selected.courseId)} loadFiles={live.files} onSeek={seek}/>} {section==='notes'&&<LectureNotebook key={`${selected.source}:${selected.id}`} scope={accountScope(live.account)} recording={selected} positionMs={positionMs} onSeek={seek}/>}</Suspense>

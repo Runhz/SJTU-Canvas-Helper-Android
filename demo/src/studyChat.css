@@ -14,3 +14,11 @@
 .study-ai-overlay .modal>.study-chat{height:min(720px,calc(100vh - 130px));height:min(720px,calc(100dvh - 130px))}
 @media(max-width:599px){.study-ai-overlay .modal>.study-chat{height:calc(92vh - 92px);height:calc(92dvh - 92px)}}
 @media(max-height:500px){.study-ai-overlay .modal>.study-chat{height:calc(100vh - 70px);height:calc(100dvh - 70px)}}
+.reasoning-card{min-width:0;margin:4px 0 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface-soft);color:var(--muted);font-size:12px;overflow:hidden}
+.reasoning-card>summary{display:block;list-style:none;cursor:pointer;padding:11px 13px}.reasoning-card>summary::-webkit-details-marker{display:none}
+.reasoning-heading{display:flex;align-items:center;gap:8px}.reasoning-heading strong{font-size:12px;font-weight:550}.reasoning-heading small{margin-left:auto;font-variant-numeric:tabular-nums}.reasoning-heading>svg:last-child{margin-left:auto;flex:none}.reasoning-heading small+svg{margin-left:0}
+.reasoning-glimpse{display:block;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;line-height:1.6;opacity:.8}
+.reasoning-heading small+svg:last-child{margin-left:0}
+.reasoning-card[open] .reasoning-glimpse{display:none}.reasoning-card[open] .reasoning-heading>svg:last-child{transform:rotate(180deg)}
+.reasoning-content{max-height:300px;max-height:min(36dvh,300px);overflow:auto;overscroll-behavior:contain;padding:0 13px 13px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.85;user-select:text}
+@media(prefers-reduced-motion:no-preference){.reasoning-card.is-thinking .reasoning-heading>svg:first-child{animation:reasoning-breathe 1.8s ease-in-out infinite}@keyframes reasoning-breathe{50%{opacity:.45}}}

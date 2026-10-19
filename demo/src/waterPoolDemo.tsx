@@ -1,0 +1,10 @@
+import {useEffect,useRef,useState} from 'react';
+import {createRoot} from 'react-dom/client';
+import {createWaterPool,type PoolHandle} from './WaterPool';
+import {poolDragStrength} from './waterPool/PoolResponse';
+import './waterPoolDemo.css';
+function Demo(){const host=useRef<HTMLDivElement>(null),pool=useRef<PoolHandle>(),drag=useRef<{x:number;y:number}>(),[fill,setFill]=useState(.6),[dark,setDark]=useState(false),[error,setError]=useState(false);
+ useEffect(()=>{try{pool.current=createWaterPool(host.current!,.6,()=>setError(true))}catch{setError(true)}return()=>pool.current?.dispose()},[]);useEffect(()=>{pool.current?.setFill(fill)},[fill]);useEffect(()=>{document.documentElement.dataset.theme=dark?'dark':'light'},[dark]);
+ function touch(e:React.PointerEvent<HTMLDivElement>,distance?:number){const b=e.currentTarget.getBoundingClientRect();pool.current?.disturb((e.clientX-b.left)/b.width,(e.clientY-b.top)/b.height,distance===undefined?.045:poolDragStrength(distance,b.width))}
+ return <main><header><span>CANVAS 随行 / 实时效果</span><button onClick={()=>setDark(v=>!v)}>{dark?'日间':'夜间'}</button></header><h1>一池清水，随手泛起涟漪。</h1><p>点击水面、划动搅水，也可以在手机上倾斜与晃动。</p><section className="pool-studio"><div className="pool-preview" ref={host} onPointerDown={e=>{drag.current={x:e.clientX,y:e.clientY};e.currentTarget.setPointerCapture(e.pointerId);touch(e)}} onPointerMove={e=>{if(drag.current){const distance=Math.hypot(e.clientX-drag.current.x,e.clientY-drag.current.y);drag.current={x:e.clientX,y:e.clientY};if(distance>.5)touch(e,distance)}}} onPointerUp={()=>{drag.current=undefined}} onPointerCancel={()=>{drag.current=undefined}}/>{error&&<p role="alert">当前图形环境无法运行水面效果。</p>}<footer><label>水量 <input aria-label="水量" type="range" min="0" max="1" step=".01" value={fill} onChange={e=>setFill(Number(e.target.value))}/><span>{Math.round(fill*100)}%</span></label><button onClick={()=>pool.current?.impulse(.45)}>晃一下</button></footer></section><small>点按泛起涟漪 · 拖动搅水 · 倾斜轻晃</small></main>
+}const root=createRoot(document.getElementById('root')!);root.render(<Demo/>);if(import.meta.hot)import.meta.hot.dispose(()=>root.unmount());

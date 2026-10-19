@@ -1,6 +1,7 @@
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {act,cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 vi.mock('./runtime',()=>({NATIVE:true,ai:vi.fn(),cancelAi:vi.fn().mockResolvedValue(undefined)}));
+vi.mock('./studyFileReader',()=>({readQuestionMaterials:vi.fn(async payload=>payload)}));
 import * as runtime from './runtime';
 import {activateChatScope} from './chatSession';
 beforeEach(()=>activateChatScope('preview'));
@@ -13,7 +14,7 @@ describe('回答与公式显示',()=>{
     vi.mocked(runtime.ai).mockImplementation((_m,_a,_q,onText)=>{emit=onText;return new Promise(r=>{resolve=r;});});
     render(<AiChat context="测试课件" payload={{mode:'file',args:{file:{id:1}}}} onTime={()=>{}} onConfigure={()=>{}}/>);
     fireEvent.change(screen.getByRole('textbox',{name:'向学习助手提问'}),{target:{value:'解释公式'}});fireEvent.click(screen.getByRole('button',{name:'发送问题'}));
-    act(()=>emit('这里是第一段，'));await waitFor(()=>expect(screen.getByText('这里是第一段，')).toBeTruthy());
+    await waitFor(()=>expect(runtime.ai).toHaveBeenCalled());act(()=>emit('这里是第一段，'));await waitFor(()=>expect(screen.getByText('这里是第一段，')).toBeTruthy());
     expect(screen.getByRole('button',{name:'停止生成'})).toBeTruthy();
     await act(async()=>resolve('这里是第一段，完整答案。'));
     expect(screen.getByText('这里是第一段，完整答案。')).toBeTruthy();

@@ -16,7 +16,7 @@ impl Client{
         let file:File=serde_json::from_value(raw.clone()).map_err(|_|"课件信息格式不完整")?;
         let max_bytes=max_mb.clamp(16,256)*1024*1024;
         if file.size>max_bytes{return Err(format!("课件为 {:.1} MB，超过本机安全读取容量 {} MB；请按章节拆分",file.size as f64/1048576.0,max_mb.clamp(16,256)))}
-        let revision=format!("{id}:{}:{}:{}:reader-v2",file.uuid,file.size,raw["updated_at"]);
+        let revision=format!("{id}:{}:{}:{}:reader-v3",file.uuid,file.size,raw["updated_at"]);
         let key=format!("{:x}",Md5::digest(revision.as_bytes()));tokio::fs::create_dir_all(root).await.map_err(|_|"无法建立课件缓存")?;
         let text_path=root.join(format!("{key}.txt"));
         if let Ok(text)=tokio::fs::read_to_string(&text_path).await{on_phase("已读取此版本的本机课件缓存".into());return Ok((file.display_name,text))}
@@ -33,17 +33,27 @@ impl Client{
             output.flush().await.map_err(|_|"课件缓存写入失败")?;drop(output);if file.size>0&&done!=file.size{let _=tokio::fs::remove_file(&tmp).await;return Err("课件长度不完整，请重新下载".into())}tokio::fs::rename(tmp,&binary).await.map_err(|_|"课件缓存保存失败")?;
         }
         on_phase("正在提取课件正文、幻灯片与备注…".into());
-        let name=file.display_name.clone();let path=binary.clone();
-        let permit=TEXT_PARSERS.acquire().await.map_err(|_|"课件读取队列已关闭")?;
-        let text=tokio::task::spawn_blocking(move||{
-            let _permit=permit;
-            let bytes=std::fs::read(path).map_err(|_|"课件缓存读取失败")?;
-            let ext=Path::new(&name).extension().and_then(|s|s.to_str()).unwrap_or("").to_ascii_lowercase();
-            let reader=super::file_parser::new_generic_file_reader();
-            tokio::runtime::Handle::current().block_on(reader.parse(bytes.into(),&ext)).map_err(|e|match e{crate::error::AppError::LLMError(s)=>s,crate::error::AppError::UnsupportedFileExtensionError(_)=>format!("暂不支持 .{ext} 文字提取；可使用 PPT/PPTX、PDF、DOCX、XLSX、OpenDocument 或文本资料"),_=>"课件结构损坏、已加密或无法提取文字".into()})
-        }).await.map_err(|_|"课件提取任务未完成")??;
-        if text.trim().is_empty(){return Err("课件没有可提取文字；图片型课件或扫描 PDF 需要先提供文字/OCR 版本".into())}
+        let text=parse_local_text(binary.clone(),file.display_name.clone()).await?;
         let tmp=root.join(format!("{key}.text.partial"));tokio::fs::write(&tmp,&text).await.map_err(|_|"课件文字缓存保存失败")?;tokio::fs::rename(tmp,text_path).await.map_err(|_|"课件文字缓存保存失败")?;
         Ok((file.display_name,text))
     }
+}
+
+/// Shared parser for trusted staged downloads and direct Canvas retrieval.
+pub async fn parse_local_text(path:std::path::PathBuf,name:String)->Result<String>{
+    let permit=TEXT_PARSERS.acquire().await.map_err(|_|"课件读取队列已关闭")?;
+    tokio::task::spawn_blocking(move||{
+        let _permit=permit;
+        let size=std::fs::metadata(&path).map_err(|_|"文件缓存已失效")?.len();
+        if size==0||size>256*1024*1024{return Err("文件为空或超过 256 MB，请按章节拆分".into())}
+        let bytes=std::fs::read(path).map_err(|_|"文件缓存读取失败")?;
+        let ext=Path::new(&name).extension().and_then(|s|s.to_str()).unwrap_or("").to_ascii_lowercase();
+        let reader=super::file_parser::new_generic_file_reader();
+        let parsed=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||tokio::runtime::Handle::current().block_on(reader.parse(bytes.into(),&ext))));
+        let text=parsed.map_err(|_|"文件解析失败，可能已加密或损坏")?.map_err(|e|match e{crate::error::AppError::LLMError(s)=>s,crate::error::AppError::UnsupportedFileExtensionError(_)=>format!("暂不支持 .{ext} 的内容读取；可使用 PDF、PPT/PPTX、DOCX、XLSX 或文本"),_=>"文件已加密、损坏或文字层无法解析".into()})?;
+        let useful=text.lines().any(|line|!line.trim().is_empty()&&!line.starts_with("[PDF 第 "));
+        if !useful{return Err("[NO_TEXT] 文件没有可提取文字，需使用页面图像阅读".into())}
+        if text.chars().count()>2_000_000{return Err("文件正文过多，请按章节拆分后提问".into())}
+        Ok(text)
+    }).await.map_err(|_|"文件读取任务未完成".to_string())?
 }

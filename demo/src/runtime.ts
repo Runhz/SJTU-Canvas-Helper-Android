@@ -121,14 +121,17 @@ export async function enqueueRecording(recording:Recording,accountId:string,trac
   const plan=await api<Record<string,unknown>>('videoDownloadPlan',{source:recording.source,videoId:recording.id,track,name:`${recording.title} · 机位${track+1}.mp4`});
   return native('enqueueDownload',{...plan,accountId,courseId:recording.courseId,resourceId:`${recording.source}:${recording.id}:${track}`});
 }
-export interface ChatMessage {role:'user'|'assistant';content:string}
-export async function ai(mode:string,args:Record<string,unknown>,question:string,onText:(text:string)=>void,history:ChatMessage[]=[],options:{requestId?:string;onPhase?:(s:string)=>void}={}){
+export interface ChatMessage {role:'user'|'assistant';content:string;reasoning?:string;reasoningMs?:number}
+export async function ai(mode:string,args:Record<string,unknown>,question:string,onText:(text:string)=>void,history:ChatMessage[]=[],options:{requestId?:string;onPhase?:(s:string)=>void;onReasoning?:(s:string)=>void}={}){
+  await sessionReady;
   const channel=new Channel<string>();channel.onmessage=onText;
   const phases=new Channel<string>();phases.onmessage=s=>options.onPhase?.(s);
-  return invoke<string>('ai_chat',{mode,args,messages:[...history,{role:'user',content:question}],onChunk:channel,onPhase:phases,requestId:options.requestId||null});
+  const reasoning=new Channel<string>();reasoning.onmessage=s=>options.onReasoning?.(s);
+  return invoke<string>('ai_chat',{mode,args,messages:[...history.map(m=>({role:m.role,content:m.content})),{role:'user',content:question}],onChunk:channel,onPhase:phases,onReasoning:reasoning,requestId:options.requestId||null});
 }
 export const cancelAi=(requestId:string)=>invoke('cancel_ai',{requestId});
 export function readCourseFile(fileId:string,requestId:string,onPhase:(text:string)=>void){const phases=new Channel<string>();phases.onmessage=onPhase;return invoke<{name:string;text:string}>('read_course_file',{fileId:Number(fileId),requestId,onPhase:phases});}
+export async function readPreparedFile(path:string,name:string,requestId:string,onPhase:(text:string)=>void){await sessionReady;const phases=new Channel<string>();phases.onmessage=onPhase;return invoke<{name:string;text:string}>('read_prepared_file',{path,name,requestId,onPhase:phases});}
 export const modelList=(url:string,key:string)=>invoke<string[]>('list_models',{url,key});
 export interface ModelCapabilities { contextTokens:number|null;vision:boolean|null;maxFileBytes:number|null;inputTypes:string[] }
 export const modelCapabilities=(config:AccountConfig)=>invoke<ModelCapabilities>('model_capabilities',{url:config.modelUrl,key:config.modelKey,model:config.modelName});
@@ -144,7 +147,7 @@ export async function materialText(recording:Recording){
   if(results.every(r=>r.status==='rejected'))throw new Error('字幕与课件切片均未读取成功，请检查登录状态或稍后重试');
   const lines:SubtitleLine[]=(subtitle.beforeAssemblyList||subtitle.before_assembly_list||[]).map((s:Record<string,any>)=>({bg:Number(s.bg)||0,ed:Number(s.ed)||0,res:String(s.res||'')}));
   const citation=(ms:number)=>`[${subtitleTime(ms)}](#video=${encodeURIComponent(recording.source+':'+recording.id)}&t=${Math.floor(ms/1000)})`;
-  const text=`课堂：${recording.title}\n`+lines.map(s=>`[字幕] ${citation(s.bg)} ${s.res}`).join('\n')+'\n'+slides.map(s=>`[PPT OCR] ${s.createSec!==null&&s.createSec!==undefined&&Number.isFinite(Number(s.createSec))?citation(Number(s.createSec)*1000):'时间未知'} ${s.ocrText||(s.ocr||[]).map((w:Record<string,string>)=>w.word).join(' ')}`).join('\n');
-  const hasText=lines.some(line=>line.res.trim())||slides.some(s=>(s.ocrText||(s.ocr||[]).map((w:Record<string,string>)=>w.word).join(' ')).trim());
+  const text=`课堂：${recording.title}\n`+lines.map(s=>`[字幕] ${citation(s.bg)} ${s.res}`).join('\n');
+  const hasText=lines.some(line=>line.res.trim());
   return {lines,slides,text:hasText?text:''};
 }
