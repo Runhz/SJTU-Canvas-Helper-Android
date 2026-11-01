@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 4173 --strictPort",
     "build": "tsc --noEmit && vite build",
+    "build:desktop": "tsc --noEmit && vite build --mode desktop",
     "test": "vitest run",
     "test:encoding": "node tools/check-encoding.mjs"
   },
   "dependencies": {
+    "@chatui/core": "3.9.0",
     "@tauri-apps/api": "^2.12.4",
     "canvas-confetti": "^1.9.4",
     "katex": "0.19.0",
@@ -42,6 +44,7 @@
     "vitest": "4.1.11"
   },
   "overrides": {
-    "katex": "$katex"
+    "katex": "$katex",
+    "dompurify": "3.4.17"
   }
 }

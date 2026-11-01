@@ -5,7 +5,7 @@ import {apiPayload,seedSources,rangedSource} from './studyAttachments';
 const lines=[{bg:1000,ed:2000,res:'最早定义 f 表示频率'},{bg:190000,ed:192000,res:'当前讲解'},{bg:250000,ed:251000,res:'后面的应用'}];
 it('keeps nearby focus while making the complete lecture available as background',()=>{
  const payload=lecturePayload('课堂','canvas:71','7',195000,lines);
- expect(payload.args.text).toContain('当前讲解');expect(payload.args.text).not.toContain('最早定义');expect(payload.args.lectureBackground).toMatchObject({resourceId:'canvas:71',lines});
+ expect(payload.args.text).toContain('当前讲解');expect(payload.args.text).not.toContain('最早定义');expect(payload.args.lectureBackground).toMatchObject({resourceId:'canvas:71',lines});expect(payload.args.sourceManifest).toMatchObject([{kind:'transcript',id:'canvas:71'}]);
 });
 it('retains deliberately selected course files on the next screenshot in the same lecture only',()=>{
  const old={mode:'materials',args:{resourceId:'canvas:71',files:[{id:9,courseId:'7',name:'讲义.pptx'}],documents:[{id:'9',courseId:'7',name:'讲义.pptx',text:'已经读过的课件正文',coverage:'正文'}]}};
@@ -16,9 +16,9 @@ it('respects explicit subtitle selection and removal instead of silently retaini
  const original=lecturePayload('课堂','canvas:71','7',195000,lines),sources=seedSources('课堂',original),source=sources.find(s=>s.kind==='subtitle')!;
  expect(source.lines).toEqual(lines);
  const kept=await apiPayload([source],original,'test');expect(kept.args.lectureBackground).toMatchObject({lines});expect(kept.args.text).toContain('当前讲解');expect(kept.args.text).not.toContain('后面的应用');
- const range=await apiPayload([rangedSource(source,180000,200000,'txt')],original,'test');expect(range.args.lectureBackground).toBeUndefined();expect(range.args.subtitleScope).toBe('selected');
+ const range=await apiPayload([rangedSource(source,180000,200000,'txt')],original,'test');expect(range.args.lectureBackground).toBeUndefined();expect(range.args.subtitleScope).toBe('selected');expect(range.args.sourceManifest).toMatchObject([{kind:'transcript',fromMs:190000,toMs:192000}]);
  const image={key:'image',name:'画面',kind:'image' as const,courseId:'7',resourceId:'canvas:71',mime:'image/jpeg',image:'data:image/jpeg;base64,YQ=='};
- const removed=await apiPayload([image],original,'test');expect(removed.args.lectureBackground).toBeUndefined();expect(removed.args.text).toBe('');
+ const removed=await apiPayload([image],original,'test');expect(removed.args.lectureBackground).toBeUndefined();expect(removed.args.text).toBe('');expect(removed.args.sourceManifest).toMatchObject([{kind:'image'}]);expect(JSON.stringify(removed.args.sourceManifest)).not.toContain('transcript');
 });
 it('persists the teaching choice and one copy of background without credentials or cross-lecture reuse',async()=>{
  const payload=lecturePayload('课堂','canvas:71','7',195000,lines);payload.args.learningSkill='recall';payload.args.lectureBackground={resourceId:'canvas:71',lines:[...lines,{bg:1,res:'唯一整堂背景内容'}],token:'PRIVATE'};

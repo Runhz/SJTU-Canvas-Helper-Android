@@ -6,3 +6,11 @@
 @media(prefers-reduced-motion:no-preference){.learning-skill-list>button{transition:background .16s,border-color .16s,transform .16s}.learning-skill-list>button:active{transform:scale(.98)}}
 .learning-skill-modal .modal.wide{width:min(840px,100%);display:flex;flex-direction:column;max-height:calc(100dvh - 16px);overflow:hidden}.learning-skill-modal .modal-header,.learning-skill-footer{flex:none}.learning-skill-layout{flex:1}
 @media(max-height:500px){.learning-skill-modal .modal{padding:12px 16px}.learning-skill-modal .modal-header{min-height:38px}.learning-skill-modal .modal-header h2{font-size:18px}.learning-skill-layout{max-height:none;margin:8px 0}.learning-skill-footer{padding-top:8px}.learning-skill-list{max-height:120px}.learning-skill-preview{min-height:70px}}
+.learning-skill-list>button.skill-add{border-style:dashed;color:var(--accent)}
+.skill-custom-actions{display:inline-flex;align-items:center;gap:8px;color:var(--muted)}
+.skill-custom-actions svg:last-child:hover{color:var(--accent)}
+.skill-create-form{display:grid;gap:10px;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.skill-create-form label{display:grid;gap:5px;color:var(--muted);font-size:11px}
+.skill-create-form input,.skill-create-form textarea{width:100%;border:1px solid var(--line);border-radius:11px;background:var(--surface-soft);color:var(--text);padding:9px;font:inherit}
+.skill-create-form textarea{min-height:80px;resize:vertical;line-height:1.6}
+.skill-create-form>div{display:flex;justify-content:flex-end;gap:8px}

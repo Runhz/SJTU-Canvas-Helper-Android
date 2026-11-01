@@ -56,7 +56,26 @@ pub async fn native_call(app: AppHandle, method: String, args: Value) -> std::re
         return tauri::async_runtime::spawn_blocking(move || handle.run_mobile_plugin::<Value>(method, args).map_err(|e| e.to_string())).await.map_err(|e| e.to_string())?;
     }
     #[cfg(not(target_os = "android"))]
-    Err("This operation requires the Android app".into())
+    {
+        let path = app.path().app_config_dir().map_err(|e| e.to_string())?.join("canvas-suixing-desktop.json");
+        match method.as_str() {
+            "loadSettings" => {
+                let value = std::fs::read_to_string(&path).ok().and_then(|text| serde_json::from_str::<Value>(&text).ok())
+                    .unwrap_or_else(|| json!({"currentId":"","accounts":[]}));
+                Ok(value)
+            }
+            "saveSettings" => {
+                if let Some(parent) = path.parent() { std::fs::create_dir_all(parent).map_err(|e| e.to_string())?; }
+                std::fs::write(&path, serde_json::to_vec_pretty(&args["settings"]).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+                Ok(json!({"saved":true}))
+            }
+            "clearAccount" | "clearCache" | "requestNotifications" | "setAppearance" | "syncCalendar" => Ok(json!({"ok":true})),
+            "listDownloads" => Ok(json!({"tasks":[]})),
+            "deviceInfo" => Ok(json!({"platform":"windows","desktop":true})),
+            "notifyAiComplete" => Ok(json!({"ok":true})),
+            _ => Err(format!("桌面端暂不支持原生操作：{method}")),
+        }
+    }
 }
 
 #[tauri::command]

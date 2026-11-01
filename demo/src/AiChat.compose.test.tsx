@@ -5,7 +5,7 @@ import * as runtime from './runtime';
 import {AiChat} from './AiChat';
 import {activateChatScope,flushChats} from './chatSession';
 import {listConversations,newConversation,saveConversation,savedPayload} from './chatHistory';
-const image='data:image/jpeg;base64,YWJj',payload={mode:'materials',args:{resourceId:'canvas:compose',positionMs:23000,text:'附近字幕',screenshot:image}};
+const image='data:image/jpeg;base64,YWJj',payload={mode:'materials',args:{resourceId:'canvas:compose',positionMs:23000,text:'附近字幕',screenshot:image,sourceManifest:[{kind:'transcript',id:'canvas:compose',title:'课堂字幕'},{kind:'image',id:'canvas:compose:23000',title:'课堂截图',positionMs:23000}]}};
 const props={context:'课堂提问',payload,storageScope:'compose',onTime:vi.fn(),onConfigure:vi.fn()};
 beforeEach(()=>{localStorage.clear();vi.clearAllMocks();activateChatScope('compose')});afterEach(()=>{cleanup();activateChatScope('cleanup')});
 const ready=()=>waitFor(()=>expect((screen.getByRole('textbox',{name:'向学习助手提问'}) as HTMLTextAreaElement).disabled).toBe(false));
@@ -30,7 +30,7 @@ describe('focused composer',()=>{
     flushChats();view.unmount();const rows=await listConversations('compose');expect(rows[0].turns?.[0].payload.args.screenshot).toBe(image);expect(rows[0].payload.args.screenshot).toBeUndefined();
   });
   it('can remove a pending screenshot without sending it or discarding the text',async()=>{
-    vi.mocked(runtime.ai).mockResolvedValue('仅文字回答');render(<AiChat {...props}/>);await ready();fireEvent.change(screen.getByRole('textbox',{name:'向学习助手提问'}),{target:{value:'已有问题'}});fireEvent.click(screen.getByRole('button',{name:'移除提问截图'}));expect(runtime.ai).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'发送问题'}));await waitFor(()=>expect(runtime.ai).toHaveBeenCalledOnce());expect(vi.mocked(runtime.ai).mock.calls[0][1].screenshot).toBeUndefined();expect(vi.mocked(runtime.ai).mock.calls[0][2]).toBe('已有问题');
+    vi.mocked(runtime.ai).mockResolvedValue('仅文字回答');render(<AiChat {...props}/>);await ready();fireEvent.change(screen.getByRole('textbox',{name:'向学习助手提问'}),{target:{value:'已有问题'}});fireEvent.click(screen.getByRole('button',{name:'移除提问截图'}));expect(runtime.ai).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'发送问题'}));await waitFor(()=>expect(runtime.ai).toHaveBeenCalledOnce());expect(vi.mocked(runtime.ai).mock.calls[0][1].screenshot).toBeUndefined();expect(vi.mocked(runtime.ai).mock.calls[0][2]).toBe('已有问题');expect(vi.mocked(runtime.ai).mock.calls[0][1].sourceManifest).toEqual([{kind:'transcript',id:'canvas:compose',title:'课堂字幕'}]);
   });
   it('expands the same input in place and only collapses when requested',async()=>{
     render(<AiChat {...props}/>);await ready();const input=screen.getByRole('textbox',{name:'向学习助手提问'});fireEvent.click(screen.getByRole('button',{name:'扩大输入框'}));const value='这是一段需要编辑的长问题。'.repeat(100);expect(screen.getByRole('textbox',{name:'向学习助手提问'})).toBe(input);expect(screen.queryByRole('dialog')).toBeNull();fireEvent.change(input,{target:{value}});expect(input.closest('form')?.classList.contains('composer-expanded')).toBe(true);fireEvent.click(screen.getByRole('button',{name:'收起输入框'}));expect((input as HTMLTextAreaElement).value).toBe(value);expect(runtime.ai).not.toHaveBeenCalled();

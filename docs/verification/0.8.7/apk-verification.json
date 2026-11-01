@@ -1,0 +1,34 @@
+{
+  "version": "0.8.7",
+  "versionCode": 8007,
+  "package": "com.canvas.sjtu.mobile",
+  "abi": [
+    "arm64-v8a"
+  ],
+  "bytes": 108185975,
+  "sha256": "74c1c95a643812c6a649a07a9785407b34ceec911a1cc208cb4921977884e043",
+  "certificateSha256": "9537c7811c55d47a4a815f1fff65d0ef050fcdf1287013a371070beafa53b594",
+  "sameCertificateAs086": true,
+  "nativeLibraryMatches": true,
+  "frontendChunksVerified": [
+    "confetti.module-5PKC4vm3.js",
+    "index-C8kUCRyX.js",
+    "index-DnGcMKJB.css",
+    "LectureNotebook-BGq7MeLX.js",
+    "LectureSlides-CAhzf__b.js",
+    "librarySearch.worker-CaeEURC_.js",
+    "StudySearch-Bc-lrya8.js",
+    "WaterPool-rZzShNKV.js"
+  ],
+  "poolChunk": "WaterPool-rZzShNKV.js",
+  "waterLicensePackaged": true,
+  "unchangedIconResources": 30,
+  "frontendTests": 232,
+  "coreTests": 20,
+  "nativeUnitTests": 14,
+  "physicalDevice": "NOT_CONNECTED",
+  "github": "PUBLISHED_PRERELEASE",
+  "releaseUrl": "https://github.com/Runhz/SJTU-Canvas-Helper-Android/releases/tag/android-v0.8.7",
+  "commit": "9c9a3087f76010e014ff7bfa245ca7a12f6bff0e",
+  "remoteAssetDigestMatches": true
+}

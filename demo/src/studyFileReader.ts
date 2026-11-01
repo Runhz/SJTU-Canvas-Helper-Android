@@ -1,8 +1,9 @@
 import * as runtime from './runtime';
 import {prepareSource,seedSources,type StudySource} from './studyAttachments';
 import {reuseDocumentPayload,type AiPayload} from './chatHistory';
+import {readDocumentEvidence,writeDocumentEvidence} from './documentEvidence';
 
-export interface ReadDocument {id:string;courseId:string;name:string;text:string;preparedId?:string;version?:string;images?:{page:number;image:string}[];pages?:number;coverage:string}
+export interface ReadDocument {id:string;courseId:string;name:string;text:string;preparedId?:string;version?:string;images?:{page:number;image:string}[];pages?:number;coverage:string;sourceKey?:string}
 export function requestedPdfPages(question:string,total:number){
  const pages=new Set<number>();const pattern=/第?\s*(\d{1,5})(?:\s*[-—~～至到]\s*(\d{1,5}))?\s*页|page\s+(\d{1,5})/gi;
  for(const match of question.matchAll(pattern)){const start=Number(match[1]||match[3]),end=Number(match[2]||start);if(start<1||end<start||end>total)throw Error(`PDF 页码范围为 1—${total}`);if(end-start>=3)throw Error('每次最多查看 3 页图像，请分段提问');for(let page=start;page<=end;page++)pages.add(page);}
@@ -10,6 +11,7 @@ export function requestedPdfPages(question:string,total:number){
 }
 /** Reuse the account's download once, then parse locally. Never send a path or URL to the model. */
 export async function readStudyFile(source:StudySource,scope:string,accountId:string|undefined,signal:AbortSignal,progress:(text:string)=>void):Promise<ReadDocument>{
+ const cached=await readDocumentEvidence(scope,source);if(signal.aborted)throw Error('已取消读取资料');if(cached){progress(`正在使用已读资料：${source.name}`);return cached;}
  const item=await prepareSource(source,scope,accountId,signal,progress);
  const name=item.name||source.name;
  const check=()=>{if(signal.aborted)throw Error('已取消读取资料')};check();
@@ -34,6 +36,7 @@ export async function readStudyFile(source:StudySource,scope:string,accountId:st
   }catch(e){check();if(!text.trim())throw e;result.images=[];result.coverage='已读取 PDF 文字正文；页面图像无法渲染，本次不能依据图片作答';}
  }
  if(!text.trim()&&!result.images?.length)throw Error(`${source.name} 没有可读取的内容`);
+ await writeDocumentEvidence(scope,source,result);
  return result;
 }
 export async function readQuestionMaterials(payload:AiPayload,scope:string,signal:AbortSignal,progress:(text:string)=>void,question=''):Promise<AiPayload>{
@@ -41,18 +44,45 @@ export async function readQuestionMaterials(payload:AiPayload,scope:string,signa
  const sources=seedSources(String(payload.args.title||payload.args.fileName||'课程资料'),payload).filter(s=>s.kind==='file');
  if(!sources.length||!runtime.NATIVE)return payload;
  if(sources.length>6)throw Error('每次最多读取 6 个文件，请分批提问');
- let accountId:string|undefined;try{accountId=JSON.parse(scope)[0]}catch{}
+ let accountId:string|undefined;try{accountId=JSON.parse(scope)[0]}catch{accountId=undefined}
  const previous=(Array.isArray(payload.args.documents)?payload.args.documents:[]) as ReadDocument[],documents:ReadDocument[]=[];
  for(const source of sources){
   const old=previous.find(d=>d.id===source.resourceId&&d.courseId===source.courseId);
-  if(old)progress('正在使用已读资料…');
-  let doc=old||await readStudyFile(source,scope,accountId,signal,progress);
+  const cached=await readDocumentEvidence(scope,source);if(signal.aborted)throw Error('已取消读取资料');
+  if(old||cached)progress('正在使用已读资料…');
+  let doc=old&&old.version===source.key?old:cached||await readStudyFile(source,scope,accountId,signal,progress);
   if(doc.preparedId&&doc.pages){const explicit=requestedPdfPages(question,doc.pages);const retained=Array.isArray(payload.args.documentPages)?payload.args.documentPages.find(p=>p.id===doc.id&&p.courseId===doc.courseId)?.pages:[];const pages:number[]=explicit.length?explicit:(Array.isArray(retained)?retained:[]);if(pages.some(p=>p<1||p>doc.pages!))throw Error(`PDF 页码范围为 1—${doc.pages}`);if(pages.length&&(explicit.length>0||pages.length!==doc.images?.length||pages.some((p,i)=>p!==doc.images?.[i]?.page))){
-    const images=[];for(const page of pages){if(signal.aborted)throw Error('已取消读取资料');progress(`正在读取 ${doc.name} · 第 ${page} 页…`);const cached=doc.images?.find(i=>i.page===page);images.push(cached||{page,image:(await runtime.native<{image:string}>('documentPage',{scope,id:doc.preparedId,page:page-1,width:1000})).image});}
-    doc={...doc,images,coverage:`文字${doc.text?'正文已提取':'层为空'}；本次图像为第 ${pages.join('、')} 页，共 ${doc.pages} 页，其余页图像未提供`};
+    const images=[];
+    let preparedId=doc.preparedId;
+    for(const page of pages){
+      if(signal.aborted)throw Error('已取消读取资料');
+      progress(`正在读取 ${doc.name} · 第 ${page} 页…`);
+      const cached=doc.images?.find(i=>i.page===page);
+      if(cached){images.push(cached);continue;}
+      let image:{image:string};
+      try{image=await runtime.native<{image:string}>('documentPage',{scope,id:preparedId,page:page-1,width:1000});}
+      catch(error){
+        // A downloaded source may have been removed since the conversation was saved.
+        if(signal.aborted)throw new Error('已取消读取资料',{cause:error});
+        if(!/文件记录已失效|文件已丢失/.test(String(error)))throw error;
+        progress(`正在重新获取 ${doc.name}…`);
+        const freshSource={...source,prepared:undefined,file:source.file?{...source.file,raw:{...source.file.raw,preparedId:undefined}}:undefined};
+        const restored=(await prepareSource(freshSource,scope,accountId,signal,progress)).id;
+        if(preparedId.startsWith('file:')&&restored!==preparedId)throw new Error('课件版本已更新，请重新选择文件后提问',{cause:error});
+        preparedId=restored;
+        if(signal.aborted)throw new Error('已取消读取资料',{cause:error});
+        image=await runtime.native<{image:string}>('documentPage',{scope,id:preparedId,page:page-1,width:1000});
+      }
+      if(signal.aborted)throw Error('已取消读取资料');
+      images.push({page,image:image.image});
+    }
+    doc={...doc,preparedId,images,coverage:`文字${doc.text?'正文已提取':'层为空'}；本次图像为第 ${pages.join('、')} 页，共 ${doc.pages} 页，其余页图像未提供`};
+    await writeDocumentEvidence(scope,source,doc);
   }}
   if(signal.aborted)throw Error('已取消读取资料');documents.push(doc);
  }
  if(documents.reduce((n,d)=>n+d.text.length,0)>2_000_000)throw Error('所选文件正文过多，请按章节或减少文件后提问');
- return{mode:payload.mode,args:{...payload.args,documents,documentPages:documents.filter(d=>d.images?.length).map(d=>({id:d.id,courseId:d.courseId,pages:d.images!.map(i=>i.page)}))}};
+ const existingManifest=Array.isArray(payload.args.sourceManifest)?payload.args.sourceManifest.filter((entry:{kind?:unknown})=>entry&&entry.kind!=='document'):[];
+ const sourceManifest=[...existingManifest,...documents.map(doc=>({kind:'document',id:doc.id,title:doc.name,coverage:doc.coverage,...(doc.images?.length?{pages:doc.images.map(image=>image.page)}:{})}))];
+ return{mode:payload.mode,args:{...payload.args,documents,sourceManifest,documentPages:documents.filter(d=>d.images?.length).map(d=>({id:d.id,courseId:d.courseId,pages:d.images!.map(i=>i.page)}))}};
 }

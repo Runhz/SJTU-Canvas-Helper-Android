@@ -1,11 +1,14 @@
 import {describe,it,expect,vi,afterEach} from 'vitest';
 import {act,cleanup,renderHook,waitFor} from '@testing-library/react';
-vi.mock('./runtime',()=>({NATIVE:true,savedSettings:vi.fn(),configure:vi.fn(),restoreSession:vi.fn().mockResolvedValue(undefined),settleAll:async(p:Promise<unknown>[])=>Promise.all(p.map(value=>value.then(value=>({status:"fulfilled",value}),reason=>({status:"rejected",reason})))),saveSettings:vi.fn().mockResolvedValue(undefined),api:vi.fn(),mapCourse:(v:Course)=>v,mapAssignment:(id:string,v:unknown)=>v,loadFiles:vi.fn(),refreshReminders:vi.fn().mockResolvedValue(undefined),native:vi.fn().mockResolvedValue({tasks:[]})}));
+vi.mock('./runtime',()=>({NATIVE:true,savedSettings:vi.fn(),configure:vi.fn(),clearSession:vi.fn().mockResolvedValue(undefined),restoreSession:vi.fn().mockResolvedValue(undefined),settleAll:async(p:Promise<unknown>[])=>Promise.all(p.map(value=>value.then(value=>({status:"fulfilled",value}),reason=>({status:"rejected",reason})))),saveSettings:vi.fn().mockResolvedValue(undefined),api:vi.fn(),mapCourse:(v:Course)=>v,mapAssignment:(id:string,v:unknown)=>v,loadFiles:vi.fn(),refreshReminders:vi.fn().mockResolvedValue(undefined),native:vi.fn().mockResolvedValue({tasks:[]})}));
 import * as runtime from './runtime';
 import {useLiveCanvas} from './useLiveCanvas';
 import {mergeCourseFiles} from './courseCache';
 import type {Course} from './domain';
 import {ResourceCache,CACHE_TTL} from './ResourceCache';
+import * as workspaceStore from './workspaceStore';
+import {DEFAULT_REMINDERS} from './domain';
+import {accountScope} from './pageMemory';
 const course:Course={id:'1',name:'课程',code:'CS',teacher:'',color:'blue',glyph:'network',files:[]};
 afterEach(()=>{cleanup();localStorage.clear();vi.clearAllMocks()});
 describe('课程资料缓存',()=>{
@@ -39,6 +42,32 @@ describe('课程资料缓存',()=>{
     const files=[{id:'9',name:'课件.pptx',size:'30 MB',kind:'PPTX',updated:'今天'}];vi.mocked(runtime.loadFiles).mockResolvedValue(files);
     const {result}=renderHook(()=>useLiveCanvas());await waitFor(()=>expect(result.current.courses).toHaveLength(1));
     await act(async()=>{await result.current.files(course)});await act(async()=>{await result.current.refresh()});expect(result.current.courses[0].files).toEqual(files);
-    vi.mocked(runtime.loadFiles).mockRejectedValueOnce(new Error('offline'));await act(async()=>{try{await result.current.files(course,true)}catch{}});expect(result.current.courses[0].files).toEqual(files);expect(result.current.courses[0].fileError).toContain('offline');
+    vi.mocked(runtime.loadFiles).mockRejectedValueOnce(new Error('offline'));await act(async()=>{try{await result.current.files(course,true)}catch{/* The hook exposes the error while preserving the cached list. */}});expect(result.current.courses[0].files).toEqual(files);expect(result.current.courses[0].fileError).toContain('offline');
+  });
+  it('waits for saved state and keeps edits made during restoration',async()=>{
+    const config={accountId:'delayed-fixture',identityId:'3',token:'not-real',cookie:'',modelKey:'',modelUrl:'',modelName:''};
+    vi.mocked(runtime.savedSettings).mockResolvedValue({currentId:config.accountId,accounts:[config]});
+    vi.mocked(runtime.api).mockResolvedValue([]);
+    let finish!:(value:any)=>void;
+    const restore=vi.spyOn(workspaceStore,'readWorkspaceSnapshot').mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve}));
+    try{
+      const {result}=renderHook(()=>useLiveCanvas());
+      await waitFor(()=>expect(restore).toHaveBeenCalled());
+      await act(async()=>{result.current.setState(current=>({...current,seen:['changed-while-loading']}))});
+      expect(runtime.api).not.toHaveBeenCalled();
+      await act(async()=>{finish({version:1,assignments:[],downloads:[],reminders:[],settings:{...DEFAULT_REMINDERS,enabled:false},seen:['old'],syncedAt:123})});
+      await waitFor(()=>expect(result.current.state.settings.enabled).toBe(false));
+      expect(result.current.state.seen).toEqual(['changed-while-loading']);
+      await waitFor(()=>expect(runtime.api).toHaveBeenCalled());
+    }finally{restore.mockRestore()}
+  });
+  it('removes account-scoped workspace records and legacy UI keys on logout',async()=>{
+    const config={accountId:'logout-fixture',identityId:'7',token:'not-real',cookie:'',modelKey:'',modelUrl:'',modelName:''},scope=accountScope(config);
+    vi.mocked(runtime.savedSettings).mockResolvedValue({currentId:config.accountId,accounts:[config]});vi.mocked(runtime.api).mockResolvedValue([]);
+    localStorage.setItem(`canvas-page-v1:${scope}`,'{}');localStorage.setItem(`canvas-resources-v2:${config.accountId}:${config.identityId}`,'{}');localStorage.setItem(`canvas-ai-presets-v1:${scope}`,'[]');localStorage.setItem(`canvas-chat-v1:${scope}:old`,'{}');
+    const paneStateScope=`canvas-lecture-v1:${scope}:right`;await workspaceStore.writeWorkspaceSnapshot(`canvas-ui-v2:${config.accountId}:${config.identityId}`,{version:1,assignments:[]});await workspaceStore.writeWorkspaceRecord(scope,'conversation','old',{id:'old'});await workspaceStore.writeWorkspaceRecord(scope,'studyNote','note',{id:'note'});await workspaceStore.writeWorkspaceRecord(paneStateScope,'uiState','value',{selected:'old-recording'});
+    const {result}=renderHook(()=>useLiveCanvas());await waitFor(()=>expect(result.current.account?.accountId).toBe(config.accountId));await act(async()=>{await result.current.logout()});
+    expect(result.current.account).toBeNull();expect(localStorage.getItem(`canvas-page-v1:${scope}`)).toBeNull();expect(localStorage.getItem(`canvas-resources-v2:${config.accountId}:${config.identityId}`)).toBeNull();expect(localStorage.getItem(`canvas-ai-presets-v1:${scope}`)).toBeNull();expect(localStorage.getItem(`canvas-chat-v1:${scope}:old`)).toBeNull();
+    expect(await workspaceStore.readWorkspaceSnapshot(`canvas-ui-v2:${config.accountId}:${config.identityId}`)).toBeUndefined();expect(await workspaceStore.readWorkspaceRecord(scope,'conversation','old')).toBeUndefined();expect(await workspaceStore.readWorkspaceRecord(scope,'studyNote','note')).toBeUndefined();expect(await workspaceStore.readWorkspaceRecord(paneStateScope,'uiState','value')).toBeUndefined();
   });
 });

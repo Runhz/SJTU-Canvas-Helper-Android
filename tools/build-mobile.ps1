@@ -49,13 +49,19 @@ if ($proxyUrl) {
     $env:JAVA_TOOL_OPTIONS="-Dhttps.proxyHost=$($buildProxy.Host) -Dhttps.proxyPort=$($buildProxy.Port) -Dhttp.proxyHost=$($buildProxy.Host) -Dhttp.proxyPort=$($buildProxy.Port)"
 }
 $env:PATH="$env:JAVA_HOME\bin;$env:ANDROID_HOME\platform-tools;$env:ANDROID_HOME\cmake\3.22.1\bin;"+$env:PATH
+$cmakePath = Join-Path $env:ANDROID_HOME 'cmake\3.22.1\bin\cmake.exe'
+if (Test-Path -LiteralPath $cmakePath) { $env:CMAKE = $cmakePath }
 $projectRoot=(Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 Push-Location -LiteralPath $projectRoot
 try {
     $argsList=@('android','build','--target',$Target,'--apk','--config','src-tauri/tauri.mobile.conf.json')
     if (!$Release) { $argsList+='--debug' }
-    & "$projectRoot\demo\node_modules\.bin\tauri.cmd" @argsList 2>&1 | Tee-Object -Variable tauriOutput
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    $tauriOutput = @(& "$projectRoot\demo\node_modules\.bin\tauri.cmd" @argsList 2>&1)
     $tauriExit=$LASTEXITCODE
+    $ErrorActionPreference = $previousErrorActionPreference
+    $tauriOutput | ForEach-Object { Write-Output $_ }
     if ($tauriExit -eq 0) { exit 0 }
     # Only known symlink failures admit the copy fallback. Other build errors
     # remain failures, even if an older native library exists.

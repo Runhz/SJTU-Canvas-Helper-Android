@@ -1,0 +1,18 @@
+{
+  "apk": "artifacts\\Canvas-Suixing-0.8.5-arm64.apk",
+  "bytes": 107508487,
+  "sha256": "f386dad084d3f74fc0c99d9217e009445409fe7b14a7aff70eca3668e81726ea",
+  "abi": [
+    "arm64-v8a"
+  ],
+  "frontendChunksVerified": [
+    "confetti.module-5PKC4vm3.js",
+    "index-8sXbJSIQ.js",
+    "LectureNotebook-EhmsHbvS.js",
+    "LectureSlides-D42W0V9V.js",
+    "librarySearch.worker-CaeEURC_.js",
+    "StudySearch-D5B9FGcu.js",
+    "index-CiOZ3sf8.css"
+  ],
+  "nativeLibraryMatches": true
+}

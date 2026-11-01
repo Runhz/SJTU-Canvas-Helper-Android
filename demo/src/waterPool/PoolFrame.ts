@@ -17,10 +17,10 @@ function extrude(shape:T.Shape,height:number,y:number,bevel=0){
   const geometry=new T.ExtrudeGeometry(shape,{depth:height,steps:1,curveSegments:8,bevelEnabled:bevel>0,bevelThickness:bevel,bevelSize:bevel,bevelSegments:2});
   geometry.rotateX(Math.PI/2);geometry.translate(0,y,0);return geometry;
 }
-/** Equal-sided glass cube: thick clear walls, polished edges, and a recessed foot. */
+/** Rounded glass vessel: softened corners, polished rim, and a recessed foot. */
 export function createPoolFrame(glassMaterial:T.ShaderMaterial){
   const group=new T.Group();group.name='polished-pool-frame';
-  const size=POOL_HALF*2,radius=.065;
+  const size=POOL_HALF*2,radius=.38;
   const wall=new T.Mesh(extrude(profile(size,size,radius,.032),size,POOL_HALF),glassMaterial);wall.name='glass-cube';wall.renderOrder=4;group.add(wall);
   const lipMaterial=new T.MeshPhysicalMaterial({color:0xe4f5f7,metalness:.08,roughness:.08,clearcoat:1,clearcoatRoughness:.05,transparent:true,opacity:.55,depthWrite:false});
   const lip=new T.Mesh(extrude(profile(size,size,radius,.032),.008,POOL_HALF,.002),lipMaterial);lip.renderOrder=5;group.add(lip);
@@ -28,7 +28,7 @@ export function createPoolFrame(glassMaterial:T.ShaderMaterial){
   const glassBase=new T.Mesh(extrude(profile(size,size,radius),.035,-1.012),glassMaterial);glassBase.renderOrder=4;group.add(glassBase);
   const baseMaterial=new T.MeshPhysicalMaterial({color:0x839da5,metalness:.65,roughness:.24,clearcoat:1,clearcoatRoughness:.18});
   const base=new T.Mesh(extrude(profile(2.084,2.084,radius),.016,-1.049,.003),baseMaterial);base.renderOrder=0;group.add(base);
-  const foot=new T.Mesh(extrude(profile(1.95,1.95,.07),.018,-1.074,.003),new T.MeshStandardMaterial({color:0x28444e,metalness:.48,roughness:.3}));group.add(foot);
+  const foot=new T.Mesh(extrude(profile(1.95,1.95,.18),.018,-1.074,.003),new T.MeshStandardMaterial({color:0x28444e,metalness:.48,roughness:.3}));group.add(foot);
   // Fine edge catches sit on the glass itself, rather than a heavy metal cage.
   const edgeMaterial=new T.LineBasicMaterial({color:0xd8f4fa,transparent:true,opacity:.32,depthWrite:false});
   for(const y of [-POOL_HALF+.005,POOL_HALF+.001]){

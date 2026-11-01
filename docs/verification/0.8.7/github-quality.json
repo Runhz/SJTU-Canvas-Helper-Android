@@ -1,0 +1,281 @@
+{
+  "conclusion": "success",
+  "headSha": "9c9a3087f76010e014ff7bfa245ca7a12f6bff0e",
+  "jobs": [
+    {
+      "completedAt": "2026-10-19T04:02:12Z",
+      "conclusion": "success",
+      "databaseId": 117883129470,
+      "name": "core",
+      "startedAt": "2026-10-19T04:01:37Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-19T04:01:38Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-19T04:01:37Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:01:40Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-19T04:01:38Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:01:48Z",
+          "conclusion": "success",
+          "name": "Run dtolnay/rust-toolchain@stable",
+          "number": 3,
+          "startedAt": "2026-10-19T04:01:40Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:02:10Z",
+          "conclusion": "success",
+          "name": "Run cargo test --locked --manifest-path tools/ai-core-tests/Cargo.toml",
+          "number": 4,
+          "startedAt": "2026-10-19T04:01:48Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:02:10Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 8,
+          "startedAt": "2026-10-19T04:02:10Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:02:10Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 9,
+          "startedAt": "2026-10-19T04:02:10Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/Runhz/SJTU-Canvas-Helper-Android/actions/runs/39197436685/job/117883129470"
+    },
+    {
+      "completedAt": "2026-10-19T04:03:12Z",
+      "conclusion": "success",
+      "databaseId": 117883129713,
+      "name": "frontend (windows-latest)",
+      "startedAt": "2026-10-19T04:01:37Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-19T04:01:38Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-19T04:01:38Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:01:46Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-19T04:01:38Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:01:56Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-node@v4",
+          "number": 3,
+          "startedAt": "2026-10-19T04:01:46Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:02:11Z",
+          "conclusion": "success",
+          "name": "Run npm ci --prefix demo",
+          "number": 4,
+          "startedAt": "2026-10-19T04:01:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:02:51Z",
+          "conclusion": "success",
+          "name": "Run npm --prefix demo test",
+          "number": 5,
+          "startedAt": "2026-10-19T04:02:11Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:03:05Z",
+          "conclusion": "success",
+          "name": "Run npm --prefix demo run build",
+          "number": 6,
+          "startedAt": "2026-10-19T04:02:51Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:03:06Z",
+          "conclusion": "success",
+          "name": "Run npm --prefix demo run test:encoding",
+          "number": 7,
+          "startedAt": "2026-10-19T04:03:05Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:03:07Z",
+          "conclusion": "success",
+          "name": "Run node tools/check-public-source.mjs",
+          "number": 8,
+          "startedAt": "2026-10-19T04:03:06Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:03:08Z",
+          "conclusion": "success",
+          "name": "Run node --test tools/public-source.test.mjs",
+          "number": 9,
+          "startedAt": "2026-10-19T04:03:07Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:03:08Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-node@v4",
+          "number": 17,
+          "startedAt": "2026-10-19T04:03:08Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:03:11Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 18,
+          "startedAt": "2026-10-19T04:03:08Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:03:11Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 19,
+          "startedAt": "2026-10-19T04:03:11Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/Runhz/SJTU-Canvas-Helper-Android/actions/runs/39197436685/job/117883129713"
+    },
+    {
+      "completedAt": "2026-10-19T04:02:23Z",
+      "conclusion": "success",
+      "databaseId": 117883129744,
+      "name": "frontend (ubuntu-latest)",
+      "startedAt": "2026-10-19T04:01:37Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-19T04:01:39Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-19T04:01:38Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:01:41Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@v4",
+          "number": 2,
+          "startedAt": "2026-10-19T04:01:39Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:01:46Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-node@v4",
+          "number": 3,
+          "startedAt": "2026-10-19T04:01:41Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:01:50Z",
+          "conclusion": "success",
+          "name": "Run npm ci --prefix demo",
+          "number": 4,
+          "startedAt": "2026-10-19T04:01:46Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:02:10Z",
+          "conclusion": "success",
+          "name": "Run npm --prefix demo test",
+          "number": 5,
+          "startedAt": "2026-10-19T04:01:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:02:18Z",
+          "conclusion": "success",
+          "name": "Run npm --prefix demo run build",
+          "number": 6,
+          "startedAt": "2026-10-19T04:02:10Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:02:18Z",
+          "conclusion": "success",
+          "name": "Run npm --prefix demo run test:encoding",
+          "number": 7,
+          "startedAt": "2026-10-19T04:02:18Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:02:19Z",
+          "conclusion": "success",
+          "name": "Run node tools/check-public-source.mjs",
+          "number": 8,
+          "startedAt": "2026-10-19T04:02:18Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:02:19Z",
+          "conclusion": "success",
+          "name": "Run node --test tools/public-source.test.mjs",
+          "number": 9,
+          "startedAt": "2026-10-19T04:02:19Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:02:21Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-node@v4",
+          "number": 17,
+          "startedAt": "2026-10-19T04:02:19Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:02:21Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@v4",
+          "number": 18,
+          "startedAt": "2026-10-19T04:02:21Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-19T04:02:21Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 19,
+          "startedAt": "2026-10-19T04:02:21Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/Runhz/SJTU-Canvas-Helper-Android/actions/runs/39197436685/job/117883129744"
+    }
+  ],
+  "status": "completed",
+  "url": "https://github.com/Runhz/SJTU-Canvas-Helper-Android/actions/runs/39197436685"
+}

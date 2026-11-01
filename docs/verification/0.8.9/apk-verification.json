@@ -1,0 +1,47 @@
+{
+  "version": "0.8.9",
+  "versionCode": 8009,
+  "package": "com.canvas.sjtu.mobile",
+  "abi": [
+    "arm64-v8a"
+  ],
+  "bytes": 108303391,
+  "sha256": "05e7cb0aca7d81842cf86b20f24d666ef89a4428636dbe9d6e069eef7d522a6e",
+  "certificateSha256": "9537c7811c55d47a4a815f1fff65d0ef050fcdf1287013a371070beafa53b594",
+  "sameCertificateAs088": true,
+  "nativeLibraryMatches": true,
+  "frontendChunksVerified": [
+    "confetti.module-5PKC4vm3.js",
+    "index-Bt0s2h0r.css",
+    "index-Do5naMIE.js",
+    "LectureNotebook-DTBFpxll.js",
+    "LectureSlides-DDUfeJ2e.js",
+    "librarySearch.worker-CaeEURC_.js",
+    "StudySearch-BRKdArbQ.js",
+    "WaterPool-DjkjxiHT.js"
+  ],
+  "poolChunk": "WaterPool-DjkjxiHT.js",
+  "waterLicensePackaged": true,
+  "unchangedIconResources": 30,
+  "frontendTests": 271,
+  "coreTests": 30,
+  "nativeUnitTests": 14,
+  "physicalDevice": "NOT_CONNECTED",
+  "github": "UPLOADED_AND_DIGEST_VERIFIED",
+  "commit": "6a09043a58148015847b7e26700f8eb442b3ad45",
+  "release": "https://github.com/Runhz/SJTU-Canvas-Helper-Android/releases/tag/android-v0.8.9",
+  "remoteMainUnchanged": true,
+  "cleanCloneBuild": "PASS",
+  "cleanCloneEncoding": "PASS",
+  "cleanClonePublicScan": "PASS",
+  "githubAssetDigests": {
+    "Canvas-Suixing-0.8.9-arm64.apk": "sha256:05e7cb0aca7d81842cf86b20f24d666ef89a4428636dbe9d6e069eef7d522a6e",
+    "SHA256SUMS.txt": "sha256:ceaed17456b42af7cf176e82af49ac81dc0b49e0b28ca98a91e4b262fb494510"
+  },
+  "githubQualityChecks": {
+    "conclusion": "success",
+    "headSha": "6a09043a58148015847b7e26700f8eb442b3ad45",
+    "status": "completed",
+    "url": "https://github.com/Runhz/SJTU-Canvas-Helper-Android/actions/runs/39269451399"
+  }
+}

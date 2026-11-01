@@ -20,6 +20,7 @@ export default function WaterTank({ completed, total,cacheKey='preview' }: { com
   }, [cacheKey]);
   useEffect(() => { scene.current?.setFill(ratio); }, [ratio]);
   return <div className="water-tank water-pool" role="img" aria-label={`透明水池：作业已提交 ${completed} 项，共 ${total} 项`}>
+    <div className="water-tank-vessel">
     <div className={`water-tank-stage water-${status}`} ref={host} aria-hidden="true" onPointerDown={event => {
       const rect = event.currentTarget.getBoundingClientRect(); pointer.current={active:true,x:event.clientX,y:event.clientY}; event.currentTarget.setPointerCapture?.(event.pointerId);if(rect.width&&rect.height)scene.current?.disturb?.((event.clientX-rect.left)/rect.width,(event.clientY-rect.top)/rect.height,.045);
     }} onPointerMove={event => {
@@ -27,7 +28,7 @@ export default function WaterTank({ completed, total,cacheKey='preview' }: { com
     }} onPointerUp={()=>{pointer.current.active=false}} onPointerCancel={()=>{pointer.current.active=false}}>
       {status==='loading'&&preview&&<img className="water-last-frame" src={preview} alt=""/>}
       {status==='failed' && <div className="water-tank-fallback"><div style={{ height: `${ratio * 100}%` }}/></div>}
-    </div>
+    </div></div>
     <div className="water-tank-count"><strong>{completed}<span> / {total}</span></strong><small>已提交</small></div>
   </div>;
 }

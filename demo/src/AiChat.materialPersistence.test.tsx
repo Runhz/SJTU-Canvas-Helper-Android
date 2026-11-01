@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
-import {cleanup,fireEvent,render,screen,waitFor,within} from '@testing-library/react';
+import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 vi.mock('./runtime',()=>({NATIVE:true,native:vi.fn(),readPreparedFile:vi.fn(),cancelAi:vi.fn().mockResolvedValue(undefined),ai:vi.fn()}));
 vi.mock('./studyAttachments',async original=>({...await original<typeof import('./studyAttachments')>(),prepareSource:vi.fn(async s=>({id:s.file?.raw?.preparedId||s.key,name:s.name}))}));
 import * as runtime from './runtime';
@@ -20,7 +20,7 @@ it('reuses the parsed PDF and page image after closing and after recreating the 
  const reopened=open();await send('继续解释');expect(runtime.readPreparedFile).toHaveBeenCalledOnce();expect(prepareSource).toHaveBeenCalledOnce();expect(runtime.native).toHaveBeenCalledTimes(3);
  expect(vi.mocked(runtime.ai).mock.calls[1][1].documents).toMatchObject([{text:expect.stringContaining('稳定保留'),images:[{page:1}]}]);
  reopened.unmount();await listConversations(scope);activateChatScope('app-restarted-again');activateChatScope(scope);open();
- await waitFor(()=>expect(screen.queryByText('正在恢复对话…')).toBeNull());const more=screen.getAllByText('更多')[0];fireEvent.click(more);fireEvent.click(within(more.parentElement!).getByRole('button',{name:'太难了'}));await waitFor(()=>expect(runtime.ai).toHaveBeenCalledTimes(3));expect(runtime.readPreparedFile).toHaveBeenCalledOnce();
+ await waitFor(()=>expect(screen.queryByText('正在恢复对话…')).toBeNull());fireEvent.click(screen.getAllByRole('button',{name:'太难了'}).at(-1)!);await waitFor(()=>expect(runtime.ai).toHaveBeenCalledTimes(3));expect(runtime.readPreparedFile).toHaveBeenCalledOnce();
 });
 it('retains already prepared materials even when the user closes before the first question',async()=>{
  const prepared={...entry,args:{...entry.args,documents:[{id:'42',courseId:'7',name:'讲义.pdf',text:'尚未提问的已读正文',preparedId:'file:42:2026-10-19:100',version:'file:42:2026-10-19:100',coverage:'已读取'}]}};

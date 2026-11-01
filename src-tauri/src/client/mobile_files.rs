@@ -9,6 +9,29 @@ type Result<T>=std::result::Result<T,String>;
 // still-running blocking task. The task itself retains this permit.
 static TEXT_PARSERS:tokio::sync::Semaphore=tokio::sync::Semaphore::const_new(1);
 impl Client{
+    #[cfg(not(target_os="android"))]
+    pub async fn desktop_save_download(&self,file:&File,token:&str,path:std::path::PathBuf)->Result<()> {
+        let url=reqwest::Url::parse(&file.url).map_err(|_|"文件地址无效")?;
+        if url.scheme()!="https" {return Err("文件需要 HTTPS 连接".into());}
+        let mut request=self.cli.get(url.clone()).timeout(std::time::Duration::from_secs(600));
+        if url.origin().ascii_serialization()=="https://oc.sjtu.edu.cn"{request=request.bearer_auth(token);}
+        let mut response=request.send().await.map_err(|_|"文件连接失败")?.error_for_status().map_err(|_|"文件访问被拒绝")?;
+        if response.url().scheme()!="https"{return Err("下载跳转地址无效".into());}
+        let temp=path.with_file_name(format!(".canvas-{}.partial",uuid::Uuid::new_v4()));
+        let result=async {
+            let mut output=tokio::fs::File::create(&temp).await.map_err(|_|"不能写入所选位置")?;
+            let mut written=0;
+            while let Some(bytes)=response.chunk().await.map_err(|_|"下载中断，请重试")? {
+                written+=bytes.len() as u64;
+                output.write_all(&bytes).await.map_err(|_|"文件保存失败，请检查剩余空间")?;
+            }
+            output.flush().await.map_err(|_|"文件保存失败")?;drop(output);
+            if file.size>0 && written!=file.size{return Err("下载不完整，请重试".into());}
+            tokio::fs::rename(&temp,&path).await.map_err(|_|"无法完成文件保存".to_string())
+        }.await;
+        if result.is_err(){let _=tokio::fs::remove_file(temp).await;}
+        result
+    }
     pub async fn mobile_file_text(&self,id:i64,token:&str,root:&Path,max_mb:u64,on_phase:&mut(dyn FnMut(String)+Send))->Result<(String,String)>{
         if id<=0{return Err("文件标识无效".into())}
         on_phase("正在检查课件版本…".into());

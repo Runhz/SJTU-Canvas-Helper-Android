@@ -1,0 +1,38 @@
+{
+  "assets": [
+    {
+      "apiUrl": "https://api.github.com/repos/Runhz/SJTU-Canvas-Helper-Android/releases/assets/655189518",
+      "contentType": "application/vnd.android.package-archive",
+      "createdAt": "2026-10-19T04:01:50Z",
+      "digest": "sha256:74c1c95a643812c6a649a07a9785407b34ceec911a1cc208cb4921977884e043",
+      "downloadCount": 0,
+      "id": "RA_kwDOVK4Qoc4nDWYO",
+      "label": "",
+      "name": "Canvas-Suixing-0.8.7-arm64.apk",
+      "size": 108185975,
+      "state": "uploaded",
+      "updatedAt": "2026-10-19T04:01:58Z",
+      "url": "https://github.com/Runhz/SJTU-Canvas-Helper-Android/releases/download/android-v0.8.7/Canvas-Suixing-0.8.7-arm64.apk"
+    },
+    {
+      "apiUrl": "https://api.github.com/repos/Runhz/SJTU-Canvas-Helper-Android/releases/assets/655189515",
+      "contentType": "text/plain; charset=utf-8",
+      "createdAt": "2026-10-19T04:01:50Z",
+      "digest": "sha256:976ea560da63b9a819e4140a2f3188ec1c87edddb95774bff7f3addf8ddaf893",
+      "downloadCount": 0,
+      "id": "RA_kwDOVK4Qoc4nDWYL",
+      "label": "",
+      "name": "SHA256SUMS.txt",
+      "size": 98,
+      "state": "uploaded",
+      "updatedAt": "2026-10-19T04:01:51Z",
+      "url": "https://github.com/Runhz/SJTU-Canvas-Helper-Android/releases/download/android-v0.8.7/SHA256SUMS.txt"
+    }
+  ],
+  "isDraft": false,
+  "isPrerelease": true,
+  "publishedAt": "2026-10-19T04:02:32Z",
+  "tagName": "android-v0.8.7",
+  "targetCommitish": "9c9a3087f76010e014ff7bfa245ca7a12f6bff0e",
+  "url": "https://github.com/Runhz/SJTU-Canvas-Helper-Android/releases/tag/android-v0.8.7"
+}

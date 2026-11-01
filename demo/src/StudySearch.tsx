@@ -1,21 +1,24 @@
 import {useEffect,useRef,useState} from 'react';
-import {FileText,LoaderCircle,Search,Square,X} from 'lucide-react';
+import {FileText,History,LoaderCircle,MessageCircle,Search,Square,X} from 'lucide-react';
 import type {Course,CourseFile} from './domain';
 import * as runtime from './runtime';
 import {fileVersion,getDocument,indexFile,listDocuments,type StudyHit} from './studyLibrary';
 import {searchOffThread} from './libraryWorker';
 import {subtitleTime} from './study';
 import {ChoicePicker} from './ChoicePicker';
+import {listConversations} from './chatHistory';
+import {searchConversations} from './globalSearch';
 import './studyReader.css';
 const extractable=(f:CourseFile)=>/\.(pdf|pptx?|docx|xlsx|odt|odp|ods|txt|md|csv|json|log|srt|vtt|py|js|ts|java|c|cpp|h|rs|xml|ya?ml)$/i.test(f.name);
 export function StudySearch({scope,courses,query,loadFiles,onOpen,defaultCourseId}:{scope:string;courses:Course[];query:string;loadFiles:(course:Course,force?:boolean)=>Promise<unknown>;onOpen:(hit:StudyHit)=>void;defaultCourseId?:string}){
-  const [hits,setHits]=useState<StudyHit[]>([]),[searching,setSearching]=useState(false),[indexing,setIndexing]=useState(false),[progress,setProgress]=useState(''),[error,setError]=useState(''),[courseId,setCourseId]=useState(defaultCourseId||courses[0]?.id||''),[count,setCount]=useState(0),[revision,setRevision]=useState(0);
+  const [hits,setHits]=useState<StudyHit[]>([]),[conversationHits,setConversationHits]=useState<StudyHit[]>([]),[searching,setSearching]=useState(false),[indexing,setIndexing]=useState(false),[progress,setProgress]=useState(''),[error,setError]=useState(''),[courseId,setCourseId]=useState(defaultCourseId||courses[0]?.id||''),[count,setCount]=useState(0),[revision,setRevision]=useState(0);
   const controller=useRef<AbortController>(),requestId=useRef(''),current=useRef(courses);current.current=courses;
-  useEffect(()=>{const update=()=>setRevision(n=>n+1);window.addEventListener('canvas-library-changed',update);return()=>{window.removeEventListener('canvas-library-changed',update);controller.current?.abort();if(requestId.current)void runtime.cancelAi(requestId.current).catch(()=>{});};},[]);
+  useEffect(()=>{const update=()=>setRevision(n=>n+1);window.addEventListener('canvas-library-changed',update);return()=>{window.removeEventListener('canvas-library-changed',update);controller.current?.abort();if(requestId.current)void runtime.cancelAi(requestId.current).catch(()=>{});};},[scope]);
+  useEffect(()=>{if(!courses.some(course=>course.id===courseId))setCourseId(courses[0]?.id||'')},[courses,courseId]);
   useEffect(()=>{let active=true;void listDocuments(scope).then(rows=>{if(active)setCount(rows.length)}).catch(()=>{});return()=>{active=false};},[scope,revision]);
   useEffect(()=>{
-    if(!query.trim()){setHits([]);setSearching(false);return;}
-    const abort=new AbortController();setSearching(!!query.trim());const timer=setTimeout(()=>{void searchOffThread(scope,query,abort.signal).then(rows=>{if(!abort.signal.aborted)setHits(rows)}).catch(()=>{if(!abort.signal.aborted)setError('本地全文搜索暂时不可用')}).finally(()=>{if(!abort.signal.aborted)setSearching(false)});},180);
+    if(!query.trim()){setHits([]);setConversationHits([]);setSearching(false);return;}
+    const abort=new AbortController();setSearching(!!query.trim());const timer=setTimeout(()=>{void Promise.all([searchOffThread(scope,query,abort.signal),listConversations(scope)]).then(([rows,conversations])=>{if(abort.signal.aborted)return;setHits(rows);setConversationHits(searchConversations(conversations,query));}).catch(()=>{if(!abort.signal.aborted)setError('本地全文搜索暂时不可用')}).finally(()=>{if(!abort.signal.aborted)setSearching(false)});},180);
     return()=>{abort.abort();clearTimeout(timer)};
   },[scope,query,revision]);
   const cancel=()=>{controller.current?.abort();if(requestId.current)void runtime.cancelAi(requestId.current).catch(()=>{});};
@@ -38,7 +41,9 @@ export function StudySearch({scope,courses,query,loadFiles,onOpen,defaultCourseI
     {runtime.NATIVE&&<details className="search-preparation"><summary>准备课程全文搜索</summary><div className="library-index-tools"><ChoicePicker label="建立索引的课程" value={courseId} disabled={indexing} onChange={setCourseId} options={courses.map(c=>({value:c.id,label:c.name}))}/>{indexing?<button className="button secondary" onClick={cancel}><Square size={14}/>停止</button>:<button className="button secondary" disabled={!courseId} onClick={()=>void build()}>准备本课程资料</button>}</div></details>}
     {progress&&<p className="library-index-status" role="status">{indexing&&<LoaderCircle size={13} className="spin"/>}{progress}</p>}{error&&<div role="alert" className="notice amber">{error}<button className="icon-button" aria-label="关闭索引提示" onClick={()=>setError('')}><X size={14}/></button></div>}
     {searching&&<p className="library-index-status">正在搜索本地资料…</p>}
+    {!!conversationHits.length&&<><p className="search-category"><History size={14}/>对话</p>{conversationHits.map(hit=><button className="library-result" key={hit.id} onClick={()=>onOpen(hit)}><strong><MessageCircle size={14}/> {hit.title}</strong><p>{hit.snippet}</p><small>AI 对话 · 可继续提问</small></button>)}</>}
+    {!!(hits.length||metadataHits.length)&&<p className="search-category"><FileText size={14}/>文件、字幕与笔记</p>}
     {[...hits,...metadataHits.filter(h=>!hits.some(v=>v.file?.id===h.file?.id))].map(hit=><button className="library-result" key={hit.id} onClick={()=>onOpen(hit)}><strong><FileText size={14}/> {hit.title}</strong><p>{hit.snippet}</p><small>{courses.find(c=>c.id===hit.courseId)?.name||'课程资料'} · {hit.kind==='note'?'笔记':hit.kind==='lecture'?'录播':'课件'}{hit.page?` · 第 ${hit.page} 页`:''}{hit.timeMs!==undefined?` · ${subtitleTime(hit.timeMs)}`:''}</small></button>)}
-    {!!query.trim()&&!searching&&!hits.length&&!metadataHits.length&&<p className="library-index-status">本地资料中没有匹配结果。未索引的正文尚未搜索。</p>}
+    {!!query.trim()&&!searching&&!hits.length&&!metadataHits.length&&!conversationHits.length&&<p className="library-index-status">本地资料和对话中没有匹配结果。未索引的正文尚未搜索。</p>}
   </section>;
 }

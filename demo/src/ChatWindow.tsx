@@ -9,7 +9,7 @@ export function clampChatSize(width:number,height:number,docked:boolean){
 }
 export function ChatWindow({scope,docked,title,onClose,children}:{scope:string;docked:boolean;title:string;onClose:()=>void;children:ReactNode}){
   const storageKey=`canvas-chat-window-v2:${scope}:${docked?'dock':'modal'}`;
-  function restore(){try{const saved=JSON.parse(localStorage.getItem(storageKey)||'null');if(saved&&Number.isFinite(saved.width)&&Number.isFinite(saved.height))return clampChatSize(saved.width,innerHeight-24,docked)}catch{}return clampChatSize(docked?440:Math.min(720,innerWidth-16),innerHeight-24,docked)}
+  function restore(){const availableW=window.visualViewport?.width||innerWidth;const dockWidth=docked&&availableW<1000?Math.max(320,availableW*.48):440;try{const saved=JSON.parse(localStorage.getItem(storageKey)||'null');if(saved&&Number.isFinite(saved.width)&&Number.isFinite(saved.height))return clampChatSize(saved.width,innerHeight-24,docked)}catch{}return clampChatSize(docked?dockWidth:Math.min(720,innerWidth-16),innerHeight-24,docked)}
   const [expanded,setExpanded]=useState(false),[size,setSize]=useState(restore);
   const preferred=useRef(size);
   useLayoutEffect(()=>{const next=restore();preferred.current=next;setSize(next)},[storageKey]);
@@ -25,5 +25,5 @@ export function ChatWindow({scope,docked,title,onClose,children}:{scope:string;d
   const toggle=<button className="icon-button" aria-label={expanded?'收起阅读':'展开阅读'} onClick={()=>setExpanded(v=>!v)}>{expanded?<Minimize2 size={18}/>:<Maximize2 size={18}/>}</button>;
   if(docked&&!expanded)return createPortal(<aside className="study-chat-dock" style={{width:size.width,height:size.height,bottom:'auto'}} aria-label="随课问答"><header><div><strong>学习助手</strong><small>{title}</small></div>{toggle}<button className="icon-button" aria-label="收起 AI" onClick={onClose}><X size={19}/></button></header>{children}{resize}</aside>,document.body);
   const dimensions:CSSProperties={width:expanded?'calc(100vw - 16px)':size.width,height:expanded?'calc(100dvh - 16px)':size.height,maxHeight:'calc(100dvh - 16px)'};
-  return <Modal title="学习助手" subtitle={title} wide className="study-ai-overlay resizable-chat" style={dimensions} onClose={onClose}><div className="chat-window-expand">{toggle}</div>{children}{!expanded&&resize}</Modal>;
+  return <Modal title={title || '学习助手'} wide className="study-ai-overlay resizable-chat" style={dimensions} onClose={onClose}><div className="chat-window-expand">{toggle}</div>{children}{!expanded&&resize}</Modal>;
 }

@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import {describe,it,expect} from 'vitest';
 import {fileUnits,fileVersion,getDocument,indexFile,indexLecture,listDocuments,listNotes,saveNote,deleteNote,searchLibrary,loadLinks,saveLinks} from './studyLibrary';
+import {readWorkspaceRecord} from './workspaceStore';
 const file={id:'42',name:'中文课件.pptx',kind:'PPTX',size:'1 MB',updated:'今天',raw:{id:42,size:100,updatedAt:'2026-10-16',url:'https://host.test/private?token=SECRET',token:'SECRET'}};
 const recording={id:'201',title:'第2讲',courseId:'7',source:'canvas' as const,materialsId:8,raw:{url:'https://private.test/?token=SECRET'}};
 describe('durable learning library',()=>{
@@ -31,6 +32,16 @@ describe('durable learning library',()=>{
     const notes=await listNotes(scope,recording);expect(notes[0].recording?.raw).toEqual({});
     await deleteNote('other','note1');expect(await listNotes(scope)).toHaveLength(1);await deleteNote(scope,'note1');expect(await listNotes(scope)).toEqual([]);
   });
+  it('migrates legacy document and note indexes before search',async()=>{
+    const scope='legacy-library-migration',doc={id:fileDocumentIdForTest(scope,'42'),scope,courseId:'7',title:'迁移讲义.pdf',kind:'file' as const,version:'v1',file:undefined,units:[{text:'迁移后的傅里叶定理',page:4}],updatedAt:Date.now()},note={id:'legacy-note',scope,courseId:'7',title:'旧笔记',body:'迁移后的课堂结论',updatedAt:Date.now()};
+    const request=indexedDB.open('canvas-study-library',1),database=await new Promise<IDBDatabase>((resolve,reject)=>{request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);request.onupgradeneeded=()=>{for(const name of ['documents','notes']){const store=request.result.createObjectStore(name,{keyPath:'id'});store.createIndex('scope','scope')}}});
+    await new Promise<void>((resolve,reject)=>{const tx=database.transaction(['documents','notes'],'readwrite');tx.objectStore('documents').put(doc);tx.objectStore('notes').put(note);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)});
+    expect(await listDocuments(scope)).toMatchObject([{id:doc.id,title:'迁移讲义.pdf'}]);expect(await listNotes(scope)).toMatchObject([{id:'legacy-note'}]);
+    expect(await searchLibrary(scope,'傅里叶 课堂',new AbortController().signal)).toHaveLength(0);
+    expect(await searchLibrary(scope,'傅里叶',new AbortController().signal)).toMatchObject([{page:4,title:'迁移讲义.pdf'}]);
+    expect(await readWorkspaceRecord(scope,'studyDocument',doc.id)).toMatchObject({id:doc.id,units:[{text:'迁移后的傅里叶定理'}]});
+    expect(await readWorkspaceRecord(scope,'studyNote','legacy-note')).toMatchObject({id:'legacy-note',body:'迁移后的课堂结论'});database.close();
+  });
   it('stops a cancelled search',async()=>{
     const c=new AbortController();c.abort();await expect(searchLibrary('note-scope','微积分',c.signal)).rejects.toThrow('取消');
   });
@@ -40,3 +51,4 @@ describe('durable learning library',()=>{
     expect(loadLinks('student',{...recording,id:'202'})).toEqual([]);
   });
 });
+function fileDocumentIdForTest(scope:string,fileId:string){return JSON.stringify([scope,'file',fileId])}

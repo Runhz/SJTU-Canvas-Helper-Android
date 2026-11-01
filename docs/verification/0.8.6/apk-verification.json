@@ -1,0 +1,30 @@
+{
+  "version": "0.8.6",
+  "versionCode": 8006,
+  "package": "com.canvas.sjtu.mobile",
+  "abi": [
+    "arm64-v8a"
+  ],
+  "bytes": 107668439,
+  "sha256": "db5e30de720aa83ee798fe33ea97a20a18b4b75fe139c6dcc5daebafae62dc3a",
+  "certificateSha256": "9537c7811c55d47a4a815f1fff65d0ef050fcdf1287013a371070beafa53b594",
+  "sameCertificateAs085": true,
+  "nativeLibraryMatches": true,
+  "frontendChunksVerified": [
+    "confetti.module-5PKC4vm3.js",
+    "index-D5qLh-w-.css",
+    "index-LTa9GS8w.js",
+    "LectureNotebook-B973NyWq.js",
+    "LectureSlides-BRWennNP.js",
+    "librarySearch.worker-CaeEURC_.js",
+    "StudySearch-DkvfKbzt.js",
+    "WaterPool-BFAEENLX.js"
+  ],
+  "poolChunk": "WaterPool-BFAEENLX.js",
+  "waterLicensePackaged": true,
+  "unchangedIconResources": 30,
+  "frontendTests": 220,
+  "nativeUnitTests": 14,
+  "physicalDevice": "NOT_CONNECTED",
+  "github": "NOT_UPLOADED"
+}

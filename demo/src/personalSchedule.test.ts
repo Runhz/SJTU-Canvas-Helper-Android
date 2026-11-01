@@ -1,5 +1,5 @@
 import {afterEach,describe,it,expect} from 'vitest';
-import {loadScheduleEdits,saveScheduleEdits,mergeSchedule,validEvent} from './personalSchedule';
+import {loadScheduleEdits,readScheduleEdits,saveScheduleEdits,mergeSchedule,validEvent} from './personalSchedule';
 import type {ScheduleEvent} from './UpcomingSchedule';
 const event=(id:string,startAt=100):ScheduleEvent=>({id,title:'电力电子',startAt,endAt:startAt+50,location:'东上院',course:'EE230',allDay:false});
 afterEach(()=>localStorage.clear());
@@ -14,4 +14,5 @@ describe('personal schedule overlay',()=>{
     expect(mergeSchedule([original],[{id:'1',value:original,deleted:false}],0)).toEqual([original]);expect(original.startAt).toBe(100);
   });
   it('rejects broken intervals and does not display finished personal events',()=>{expect(validEvent({...event('1'),endAt:0})).toBe(false);expect(mergeSchedule([],[{id:'personal-1',value:event('personal-1')}],200)).toEqual([])});
+  it('migrates schedule edits into the versioned workspace store',async()=>{saveScheduleEdits('sync-account',[{id:'personal-1',value:event('personal-1')}]);expect(await readScheduleEdits('sync-account')).toMatchObject([{id:'personal-1'}]);});
 });

@@ -28,6 +28,10 @@ describe('retained native player',()=>{
     render(<InlinePlayer recording={recording} notify={()=>{}} obscured={false} resume/>);
     await waitFor(()=>expect(runtime.native).toHaveBeenCalledWith('embedPlayer',expect.objectContaining({autoplay:false,visible:true,resourceId:'canvas:7'})));
   });
+  it('passes the saved playback position when restoring a lesson',async()=>{
+    render(<InlinePlayer recording={recording} notify={()=>{}} obscured={false} resume resumePositionMs={11000}/>);
+    await waitFor(()=>expect(runtime.native).toHaveBeenCalledWith('embedPlayer',expect.objectContaining({positionMs:11000,autoplay:false,visible:true,resourceId:'canvas:7'})));
+  });
   it('opens a search/note timestamp paused, and seeks again without rebuilding the player',async()=>{
     const props={recording,notify:vi.fn(),obscured:false,resume:true};const view=render(<InlinePlayer {...props} seekTo={{id:'first',positionMs:65000}}/>);
     await waitFor(()=>expect(runtime.native).toHaveBeenCalledWith('embedPlayer',expect.objectContaining({positionMs:65000,autoplay:false})));

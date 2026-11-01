@@ -1,27 +1,27 @@
-/* Neutral surfaces: Radix Slate. Indigo marks interaction; status colors stay semantic.
-   Loaded after layout styles to prevent legacy component colors from leaking. */
+/* Warm paper surfaces with ink text and terracotta interaction accents.
+   The same palette is shared by overview, courses, recordings, assistant and settings. */
 :root {
- color-scheme:light; --bg:#f9f9fb; --surface:#f9f9fb; --card:#fff;
- --surface-soft:#f0f0f3; --surface-hover:#e8e8ec; --line:#e8e8ec; --border-control:#cdced6;
- --text:#1c2024; --ink:#1c2024; --muted:#60646c; --subtle:#717580;
- --accent:#3a5bc7; --accent-dark:#3358d4; --accent-solid:#3e63dd;
- --accent-soft:#edf2fe; --accent-line:#c1d0ff; --on-accent:#fff;
- --blue:#3a5bc7; --green:#267552; --amber:#946000; --danger:#c12e42;
- --success-soft:#e9f6ee; --warning-soft:#fff6df; --danger-soft:#fff0f1;
- --warning-line:#eddbac; --danger-line:#f1c9ce; --shadow-card:0 2px 8px #1c202404;
- --overlay:#10121866; --brand-bg:#1c2024; --brand-ink:#fff;
+ color-scheme:light; --bg:#f7f5f1; --surface:#f7f5f1; --card:#fffdfa;
+ --surface-soft:#f1ece6; --surface-hover:#e9e2db; --line:#e3dbd2; --border-control:#cfc5bb;
+ --text:#202736; --ink:#202736; --muted:#716b65; --subtle:#898078;
+ --accent:#b85f48; --accent-dark:#9c4f3c; --accent-solid:#b85f48;
+ --accent-soft:#f4e7e0; --accent-line:#e4cfc3; --on-accent:#fffdfa;
+ --blue:#b85f48; --green:#3e6b57; --amber:#9a6a2d; --danger:#b1544f;
+ --success-soft:#e9f1e9; --warning-soft:#f5eee2; --danger-soft:#f7e9e5;
+ --warning-line:#e6d2b3; --danger-line:#e8c9c2; --shadow-card:0 2px 10px rgba(75,58,45,.06);
+ --overlay:rgba(35,30,25,.52); --brand-bg:#202736; --brand-ink:#fffdfa;
  background:var(--bg); color:var(--text);
 }
 :root[data-theme=dark] {
- color-scheme:dark; --bg:#111113; --surface:#111113; --card:#18191b;
- --surface-soft:#212225; --surface-hover:#272a2d; --line:#2e3135; --border-control:#43484e;
- --text:#edeef0; --ink:#edeef0; --muted:#b0b4ba; --subtle:#969ba4;
- --accent:#9eb1ff; --accent-dark:#5472e4; --accent-solid:#3e63dd;
- --accent-soft:#1c2541; --accent-line:#354573; --blue:#9eb1ff;
- --green:#79d1a2; --amber:#ebc16b; --danger:#ff9ba8;
- --success-soft:#192e24; --warning-soft:#2c2518; --danger-soft:#301e23;
- --warning-line:#50412a; --danger-line:#563039; --shadow-card:none;
- --overlay:#0009; --brand-bg:#edeef0; --brand-ink:#1c2024;
+ color-scheme:dark; --bg:#1c1a18; --surface:#1c1a18; --card:#24211e;
+ --surface-soft:#2c2824; --surface-hover:#35302b; --line:#403932; --border-control:#5a4e45;
+ --text:#f2ece6; --ink:#f2ece6; --muted:#c1b5ab; --subtle:#a6988e;
+ --accent:#d89578; --accent-dark:#e1a184; --accent-solid:#c87659;
+ --accent-soft:#3a2b26; --accent-line:#6a4639; --blue:#d89578;
+ --green:#8fc0a5; --amber:#e2bd78; --danger:#e5a19a;
+ --success-soft:#26362e; --warning-soft:#382e20; --danger-soft:#3b2927;
+ --warning-line:#604a2c; --danger-line:#65403b; --shadow-card:none;
+ --overlay:rgba(0,0,0,.62); --brand-bg:#f2ece6; --brand-ink:#202736;
 }
 body,.demo-stage,.app-shell,.app-content,.learning-player,.recovery-page{background:var(--bg);color:var(--text)}
 .app-shell{border-color:var(--card);box-shadow:0 20px 65px -30px #00000026}
@@ -72,6 +72,7 @@ input::placeholder,textarea::placeholder,.search-field input::placeholder,.ai-in
 .modal-header .icon-button{background:var(--surface-soft);color:var(--muted)}
 .app-content{scrollbar-color:var(--border-control) transparent}.refresh-button{color:var(--muted);border-color:var(--line)}
 .water-tank-count strong span,.water-tank-count>small,.water-quality-options small,.water-setting-heading p,.water-setting-footnote,.subtitle-context-note,.model-capability-hint p,.assistant-entry p,.schedule-event time,.schedule-event p,.schedule-event small,.schedule-empty{color:var(--muted);opacity:1}
+.schedule-event.unified-overdue strong{color:var(--danger)}.schedule-event.unified-done strong{color:var(--green)}.schedule-event.unified-assignment h3{font-weight:600}
 .water-setting-heading>svg{color:var(--accent)}.water-quality-options button.selected{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
 :focus-visible{outline-color:var(--accent)}
 .intro-brand{color:var(--text)}.intro-description,.intro-kicker,.intro-features,.intro-features svg,.demo-guide>p,.small-label,.intro-footer,.device-caption{color:var(--muted)}.demo-guide{border-color:var(--line)}

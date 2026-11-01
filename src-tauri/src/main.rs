@@ -1,5 +1,5 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![cfg_attr(any(not(debug_assertions), feature="windows-workspace"), windows_subsystem = "windows")]
 
 use std::sync::Arc;
 
@@ -24,11 +24,17 @@ use tracing_subscriber::{
 
 use crate::app::App;
 mod app;
+mod ai_context;
+mod ai_transport;
 mod canvas_agent;
 mod client;
 mod error;
+mod learning_context;
 mod mcp;
 mod model;
+mod model_capabilities;
+mod mobile;
+mod desktop;
 mod utils;
 
 #[macro_use]
@@ -304,6 +310,24 @@ async fn open_file_preview_window(
         .title(title)
         .inner_size(1280.0, 820.0)
         .min_inner_size(720.0, 480.0)
+        .center()
+        .build()
+        .map_err(|error| AppError::FilePreview(error.to_string()))?;
+    Ok(())
+}
+
+/// Opens the official SJTU live page in a separate desktop webview so video
+/// playback is independent from the main learning workspace.
+#[tauri::command]
+fn open_live_window(app: tauri::AppHandle) -> Result<()> {
+    let url = "https://live.sjtu.edu.cn/vod"
+        .parse()
+        .map_err(|error| AppError::FilePreview(format!("Invalid live URL: {error}")))?;
+    let label = format!("canvas-live-{}", uuid::Uuid::new_v4());
+    tauri::WebviewWindowBuilder::new(&app, label, tauri::WebviewUrl::External(url))
+        .title("Canvas 直播观看")
+        .inner_size(1280.0, 820.0)
+        .min_inner_size(900.0, 560.0)
         .center()
         .build()
         .map_err(|error| AppError::FilePreview(error.to_string()))?;
@@ -1065,6 +1089,10 @@ async fn stop_mcp_server() {
     APP.stop_mcp().await
 }
 
+#[cfg(feature="windows-workspace")]
+fn main() { desktop::run(); }
+
+#[cfg(not(feature="windows-workspace"))]
 #[tokio::main]
 async fn main() -> Result<()> {
     // set up logger
@@ -1092,7 +1120,31 @@ async fn main() -> Result<()> {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
+        .manage(mobile::MobileState::default())
         .invoke_handler(tauri::generate_handler![
+            desktop::desktop_load_settings,
+            desktop::desktop_save_settings,
+            desktop::desktop_open_portal,
+            desktop::desktop_sync_login,
+            desktop::desktop_open_preview,
+            desktop::desktop_import_files,
+            desktop::desktop_download_file,
+            mobile::submit_work,
+            mobile::configure_session,
+            mobile::restore_session,
+            mobile::clear_session,
+            mobile::canvas_request,
+            mobile::ai_chat,
+            mobile::cancel_ai,
+            mobile::read_course_file,
+            mobile::read_prepared_file,
+            mobile::list_models,
+            mobile::model_capabilities,
+            mobile::test_model,
+            mobile::native_call,
+            mobile::start_qr_login,
+            mobile::finish_qr_login,
+            mobile::cancel_qr_login,
             read_log_content,
             console_log,
             is_ffmpeg_installed,
@@ -1111,6 +1163,7 @@ async fn main() -> Result<()> {
             sync_course_files,
             list_course_files,
             open_file_preview_window,
+            open_live_window,
             list_course_images,
             list_course_users,
             list_course_students,

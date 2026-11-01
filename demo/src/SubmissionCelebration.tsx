@@ -9,7 +9,7 @@ export function SubmissionCelebration({show,onFinished}:{show:boolean;onFinished
     // Completion is independent of the graphics context and parent rerenders.
     const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     const timer=setTimeout(()=>finish.current?.(),reduced?750:2100);
-    const canvas=ref.current,ctx=canvas?.getContext('2d');
+    const canvas=ref.current,ctx=typeof CanvasRenderingContext2D==='undefined'?null:canvas?.getContext('2d');
     let frame=0;
     if(canvas&&ctx&&!reduced){
       const start=performance.now(),colors=['#6284ed','#46bdb7','#dfaa51','#dd7e9c','#9580dd'];

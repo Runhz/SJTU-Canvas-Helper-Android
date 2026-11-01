@@ -1,5 +1,6 @@
 import {beforeEach,describe,expect,it,vi} from 'vitest';
 import {deleteConversation,listConversations,newConversation,saveConversation,savedPayload,reuseDocumentPayload} from './chatHistory';
+import {readWorkspaceRecord} from './workspaceStore';
 beforeEach(async()=>{await listConversations('unused');localStorage.clear();});
 describe('local conversations',()=>{
   it('preserves intact messages while cleaning malformed metadata and duplicate legacy anchors',async()=>{
@@ -42,6 +43,12 @@ describe('local conversations',()=>{
     const row=newConversation('student-a','完整对话',{mode:'agent',args:{}});await saveConversation(row);
     localStorage.setItem('canvas-chat-v1:student-a:broken',JSON.stringify({...row,id:'broken',messages:[null]}));
     expect((await listConversations('student-a')).map(item=>item.title)).toEqual(['完整对话']);
+  });
+  it('migrates legacy local conversations into the shared workspace record store',async()=>{
+    const row=newConversation('legacy-migration','旧版课堂',{mode:'materials',args:{resourceId:'canvas:old',text:'旧课堂字幕'}});
+    localStorage.setItem(`canvas-chat-v1:${row.scope}:${row.id}`,JSON.stringify(row));
+    expect((await listConversations(row.scope)).map(item=>item.id)).toEqual([row.id]);
+    expect(await readWorkspaceRecord('legacy-migration','conversation',row.id)).toMatchObject({id:row.id,title:'旧版课堂',payload:{args:{text:'旧课堂字幕'}}});
   });
   it('round-trips messages, drafts and original subtitle context without credentials',async()=>{
     const payload={mode:'materials',args:{resourceId:'canvas:2',text:'原始字幕\n公式 $x^2$',timePoints:[1,4],token:'private-test-only',headers:{Cookie:'private-test-only'},url:'https://example.test/?token=private'}};

@@ -20,7 +20,7 @@ import { formatDate, countdown, statusOf, type Assignment, type DownloadTask, ty
 import type { useLiveCanvas } from './useLiveCanvas';
 import {QrLogin} from './QrLogin';
 import {ModelCapabilityHint} from './ModelCapabilityHint';
-import {accountScope,defaultLecture,decodeLecture,useRememberedState,type LectureMemory} from './pageMemory';
+import {accountScope,defaultLecture,decodeLecture,lectureMemoryKey,useRememberedState,type LectureMemory} from './pageMemory';
 type Live=ReturnType<typeof useLiveCanvas>;
 export function NativeSyllabus({course}:{course:Course}){
   const [body,setBody]=useState('正在读取课程大纲…');
@@ -99,7 +99,7 @@ export {NativeAssignmentPanel} from './AssignmentPanel';
 
 export function NativeRecordings({pane='left',live,courses,allCourses,term,setTerm,notify,onAi,obscured,target,onTargetHandled}:{pane?:'left'|'right';live:Live;courses:Course[];allCourses:Course[];term:string;setTerm:(s:string)=>void;notify:(s:string)=>void;onAi:(context:string,payload?:{mode:string;args:Record<string,unknown>})=>void;obscured:boolean;target?:LectureTarget;onTargetHandled?:()=>void}){
   const [exportRange,setExportRange]=useState(false);
-  const [memory,setMemory]=useRememberedState(`canvas-lecture-v1:${accountScope(live.account)}`,defaultLecture,decodeLecture);
+  const [memory,setMemory]=useRememberedState(lectureMemoryKey(accountScope(live.account),pane),defaultLecture,decodeLecture);
   function field<K extends keyof LectureMemory>(key:K):[LectureMemory[K],React.Dispatch<React.SetStateAction<LectureMemory[K]>>]{return [memory[key],next=>setMemory(old=>{const value=typeof next==='function'?(next as (value:LectureMemory[K])=>LectureMemory[K])(old[key]):next;return value===old[key]?old:{...old,[key]:value};})];}
   const [courseId,setCourseId]=field('courseId'),[selected,setSelected]=field('selected'),[subQuery,setSubQuery]=field('subQuery'),[section,setSection]=field('section');
   const [busy,setBusy]=useState(false),[error,setError]=useState('');
@@ -154,9 +154,9 @@ export function NativeRecordings({pane='left',live,courses,allCourses,term,setTe
     {selected&&<>
       <BackButton onClick={()=>{request.current++;setBusy(false);setSelected(null);setMaterials(null);}}>返回录播列表</BackButton>
       <div className="learning-layout"><section className="learning-player" aria-label="课堂播放区">
-      <InlinePlayer subtitles={materials?.lines} slides={materials?.slides} key={`${selected.source}:${selected.id}`} recording={selected} obscured={obscured} resume={memory.hasPlayed} seekTo={playerSeek} notify={notify} onStatus={status=>{setPositionMs(status.positionMs);if(status.opened)setMemory(old=>old.hasPlayed?old:{...old,hasPlayed:true});}} onScreenshot={(image,ms)=>classroomAi(false,image,ms)}/>
+      <InlinePlayer subtitles={materials?.lines} slides={materials?.slides} key={`${selected.source}:${selected.id}`} recording={selected} obscured={obscured} resume={memory.hasPlayed} resumePositionMs={memory.positionMs} seekTo={playerSeek} notify={notify} onStatus={status=>{setPositionMs(status.positionMs);if(status.opened)setMemory(old=>old.hasPlayed?old:{...old,hasPlayed:true});}} onScreenshot={(image,ms)=>classroomAi(false,image,ms)}/>
       <LectureQuestions scope={accountScope(live.account)} resourceId={`${selected.source}:${selected.id}`} positionMs={positionMs} onSeek={seek} onAsk={payload=>onAi(selected.title+' · 课堂问答',payload)}/><div className="video-title"><h2>{selected.title}</h2><p></p></div>
-      <div className="video-actions"><button disabled={!materials?.text.trim()} onClick={()=>classroomAi(true)}><Sparkles size={17}/>AI 总结</button><button onClick={()=>void askHere()}><MessageCircle size={17}/>问这里</button></div>
+      <div className="video-actions"><button disabled={!materials?.text.trim()} onClick={()=>classroomAi(true)}><Sparkles size={17}/>AI 总结</button><button onClick={()=>void askHere()}><MessageCircle size={17}/>AI 一键提问</button></div>
       <button className="text-button classroom-history" onClick={()=>onAi(selected.title+' · 课堂问答',{mode:'materials',args:{resourceId:`${selected.source}:${selected.id}`,title:selected.title,history:true}})}><MessageCircle size={15}/>本堂课的对话记录</button>
 
       </section><section className="learning-materials" aria-label="课堂学习资料">

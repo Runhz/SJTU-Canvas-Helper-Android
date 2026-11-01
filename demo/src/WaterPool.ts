@@ -9,6 +9,15 @@ import {animateWater,angleDelta,type WaterHandle} from './waterMotion';
 
 export interface PoolHandle extends WaterHandle {disturb(x:number,y:number,strength:number):void;snapshot?():string|undefined}
 export function poolLevel(value:number){return POOL_FLOOR+Math.max(0,Math.min(1,Number.isFinite(value)?value:0))*(POOL_FULL-POOL_FLOOR)}
+function roundedSquare(size:number,radius:number){
+  const half=size/2,r=Math.min(radius,half);
+  const shape=new T.Shape();
+  shape.moveTo(-half+r,-half);shape.lineTo(half-r,-half);shape.quadraticCurveTo(half,-half,half,-half+r);
+  shape.lineTo(half,half-r);shape.quadraticCurveTo(half,half,half-r,half);
+  shape.lineTo(-half+r,half);shape.quadraticCurveTo(-half,half,-half,half-r);
+  shape.lineTo(-half,-half+r);shape.quadraticCurveTo(-half,-half,-half+r,-half);shape.closePath();
+  return shape;
+}
 /** Transparent pool, GPU wave field adapted from MIT threejs-water. All assets are local/procedural. */
 export function createWaterPool(host:HTMLElement,fill:number,onFailure:()=>void):PoolHandle {
   const renderer=new T.WebGLRenderer({alpha:true,antialias:true,powerPreference:'low-power'});
@@ -21,12 +30,12 @@ export function createWaterPool(host:HTMLElement,fill:number,onFailure:()=>void)
   const uniforms={water:{value:wave.texture},caustics:{value:rt.texture},level:{value:poolLevel(fill)},dark:{value:0},tilt:{value:new T.Vector2()}};
   if(import.meta.env.DEV)Object.assign(canvas,{__pool:{renderer,wave,uniforms,scene,camera,decode:T.DataUtils.fromHalfFloat}});
   const material=(vertexShader:string,fragmentShader:string,transparent=false)=>new T.ShaderMaterial({uniforms,vertexShader,fragmentShader,transparent,depthWrite:!transparent,side:T.DoubleSide});
-  const top=new T.Mesh(new T.PlaneGeometry(2,2,96,96),material(shaders.surfaceVertex,shaders.surfaceFragment,true));top.renderOrder=3;scene.add(top);
-  const sides=new T.BoxGeometry(2,POOL_FULL-POOL_FLOOR,2);sides.translate(0,(POOL_FULL+POOL_FLOOR)/2,0);sides.clearGroups();
-  // Box face groups: +x,-x,+y,-y,+z,-z. Keep only the four side walls.
-  for(const i of [0,1,4,5])sides.addGroup(i*6,6,0);
+  const vesselShape=roundedSquare(2,.38);
+  const top=new T.Mesh(new T.ShapeGeometry(vesselShape,16),material(shaders.surfaceVertex,shaders.surfaceFragment,true));top.renderOrder=3;scene.add(top);
+  const sides=new T.ExtrudeGeometry(roundedSquare(2,.38),{depth:POOL_FULL-POOL_FLOOR,steps:1,curveSegments:16,bevelEnabled:false});
+  sides.rotateX(Math.PI/2);sides.translate(0,POOL_FULL,0);
   const body=new T.Mesh(sides,material(shaders.sideVertex,shaders.sideFragment,true));body.renderOrder=2;scene.add(body);
-  const bed=new T.Mesh(new T.PlaneGeometry(2,2),material(shaders.worldVertex,shaders.floorFragment,true));bed.rotation.x=-Math.PI/2;bed.position.y=POOL_FLOOR-.003;bed.renderOrder=1;scene.add(bed);
+  const bed=new T.Mesh(new T.ShapeGeometry(roundedSquare(2,.38),16),material(shaders.worldVertex,shaders.floorFragment,true));bed.rotation.x=-Math.PI/2;bed.position.y=POOL_FLOOR-.003;bed.renderOrder=1;scene.add(bed);
   const frameDesign=createPoolFrame(material(shaders.glassVertex,shaders.glassFragment,true));scene.add(frameDesign.object);
   const shadow=new T.Mesh(new T.PlaneGeometry(2.9,2.9),new T.ShaderMaterial({transparent:true,depthWrite:false,vertexShader:'varying vec2 p;void main(){p=uv*2.-1.;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'varying vec2 p;void main(){float s=exp(-dot(p,p)*4.);gl_FragColor=vec4(.08,.25,.32,s*.14);}'}));shadow.rotation.x=-Math.PI/2;shadow.position.y=-1.115;scene.add(shadow);
   const causticScene=new T.Scene(),causticCamera=new T.Camera(),causticMesh=new T.Mesh(new T.PlaneGeometry(2,2,96,96),material(shaders.causticVertex,shaders.causticFragment));causticMesh.frustumCulled=false;causticScene.add(causticMesh);

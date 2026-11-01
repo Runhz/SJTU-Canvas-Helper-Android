@@ -4,6 +4,9 @@ import { courses as demoCourses, HOUR, type Assignment, type Course, type Course
 import {subtitleTime,type SubtitleLine} from './study';
 import {VideoSession} from './videoSession';
 
+// The Windows Canvas 随行 build uses the same interaction model as Android,
+// while keeping its preview data isolated until a desktop-native service bridge
+// is wired. Android keeps the real native bridge by using the default mode.
 export const NATIVE = isTauri();
 export const NO_DEADLINE = 8_640_000_000_000_000;
 export interface ExtraLoginStatus { jaccount:boolean;canvas:boolean;legacy:boolean;cloud:boolean;checkedAt:number }

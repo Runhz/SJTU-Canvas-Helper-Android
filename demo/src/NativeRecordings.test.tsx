@@ -22,7 +22,7 @@ describe('课堂学习页',()=>{
     const {onAi}=await setup();fireEvent.click(screen.getByRole('button',{name:'AI 总结'}));expect(onAi.mock.calls[0][1].args.readMode).toBe('full');
   });
   it('主动选择不附字幕时仍可进入自由提问，不偷偷附加附近字幕',async()=>{
-    const {onAi}=await setup();fireEvent.click(screen.getByRole('button',{name:'提问资料'}));fireEvent.click(screen.getByRole('button',{name:'不附字幕'}));fireEvent.click(screen.getByRole('button',{name:'问这里'}));await waitFor(()=>expect(onAi).toHaveBeenCalled());expect(onAi.mock.calls[0][1].args).toMatchObject({text:'',subtitleLines:[],contextLabel:'自由提问'});
+    const {onAi}=await setup();fireEvent.click(screen.getByRole('button',{name:'提问资料'}));fireEvent.click(screen.getByRole('button',{name:'不附字幕'}));fireEvent.click(screen.getByRole('button',{name:'AI 一键提问'}));await waitFor(()=>expect(onAi).toHaveBeenCalled());expect(onAi.mock.calls[0][1].args).toMatchObject({text:'',subtitleLines:[],contextLabel:'自由提问'});
   });
   it('选中字幕后直接发起提问，只附所选原文和时间范围',async()=>{
     const {onAi}=await setup();fireEvent.click(screen.getByRole('button',{name:'选择字幕'}));fireEvent.click(screen.getByRole('button',{name:'选择字幕 1'}));fireEvent.click(screen.getByRole('button',{name:'用所选字幕提问'}));
@@ -47,7 +47,7 @@ describe('课堂学习页',()=>{
   it('下载字幕保持原始时间，课堂提问绑定当前课堂资料',async()=>{
     const {onAi}=await setup();fireEvent.click(screen.getByRole('button',{name:'下载 SRT 字幕'}));
     expect(runtime.native).toHaveBeenCalledWith('exportFile',expect.objectContaining({name:'测试课堂.srt',text:'1\n00:00:01,000 --> 00:00:04,000\n课堂原始字幕\n'}));
-    fireEvent.click(screen.getByRole('button',{name:/00:00:01.*课堂原始字幕/}));fireEvent.click(screen.getByRole('button',{name:'问这里'}));
+    fireEvent.click(screen.getByRole('button',{name:/00:00:01.*课堂原始字幕/}));fireEvent.click(screen.getByRole('button',{name:'AI 一键提问'}));
     await waitFor(()=>expect(onAi).toHaveBeenCalled());
     expect(onAi).toHaveBeenCalledWith('测试课堂 · 课堂问答',expect.objectContaining({mode:'materials',args:expect.objectContaining({text:expect.stringContaining('课堂原始字幕'),resourceId:'canvas:201',timePoints:[1]})}));
   });

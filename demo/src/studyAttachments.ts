@@ -57,11 +57,13 @@ export async function prepareSource(source:StudySource,scope:string,accountId:st
   return runtime.native<PreparedAttachment>('studySave',{scope,key:source.key,name:source.name,mime:source.mime,kind:source.kind,courseId:source.courseId,resourceId:source.resourceId,...(source.image?{base64:source.image.replace(/^data:image\/(jpeg|png);base64,/, '')}:{text:source.text||''})});
 }
 export async function apiPayload(sources:StudySource[],original:AiPayload,scope:string):Promise<AiPayload>{
-  const files:Record<string,unknown>[]=[],texts:string[]=[],images:string[]=[];
+  const files:Record<string,unknown>[]=[],texts:string[]=[],images:string[]=[],sourceManifest:Record<string,unknown>[]=[];
   const originalSubtitle=seedSources(String(original.args.title||'课程资料'),original).find(s=>s.kind==='subtitle');
   const keepBackground=!!original.args.lectureBackground&&sources.some(s=>s.kind==='subtitle'&&s.key===originalSubtitle?.key);
   for(const source of sources){
     if(source.kind==='file'){files.push({id:Number(source.resourceId),name:source.name,courseId:source.courseId,...(source.prepared?{preparedId:source.prepared.id}:{}),...(typeof source.file?.raw?.updatedAt==='string'?{updatedAt:source.file.raw.updatedAt}:{}),...(typeof source.size==='number'?{size:source.size}:{})});continue;}
+    if(source.kind==='subtitle'){const lines=source.lines||[];sourceManifest.push({kind:'transcript',id:source.resourceId||source.key,title:source.name,...(lines.length?{fromMs:lines[0].bg,toMs:lines[lines.length-1].ed??lines[lines.length-1].bg}:{}),coverage:keepBackground&&source.key===originalSubtitle?.key?'已准备当前位置字幕和整堂字幕背景；请求时将按预算选取':'已准备所选字幕'});}
+    if(source.kind==='image')sourceManifest.push({kind:'image',id:source.resourceId||source.key,title:source.name,...(Number.isFinite(original.args.positionMs)?{positionMs:original.args.positionMs}:{})});
     if(source.prepared){const body=await runtime.native<{text?:string;image?:string}>('studyRead',{scope,id:source.prepared.id});if(body.text)texts.push(body.text);if(body.image)images.push(body.image);}
     else{if(source.text)texts.push(keepBackground&&source.key===originalSubtitle?.key?String(original.args.text||''):source.lines?.length?`课堂：${source.name}\n`+source.lines.map(line=>`[字幕] [${subtitleTime(line.bg)}](#video=${encodeURIComponent(source.resourceId)}&t=${Math.floor(line.bg/1000)}) ${line.res}`).join('\n'):source.text);if(source.image)images.push(source.image);}
   }
@@ -69,6 +71,6 @@ export async function apiPayload(sources:StudySource[],original:AiPayload,scope:
   if(!sources.length)return{mode:'agent',args:{excludePreviousImage:true}};
   const documents=Array.isArray(original.args.documents)?original.args.documents.filter(d=>files.some(f=>String(f.id)===d.id&&f.courseId===d.courseId)):[];
   if(files.length===1&&!texts.length&&!images.length)return{mode:'file',args:{file:files[0],courseId:sources[0].courseId,fileName:sources[0].name,excludePreviousImage:true,...(documents.length?{documents}:{})}};
-  const {screenshot:_image,text:_text,files:_files,file:_file,documents:_documents,subtitleLines:_lines,timePoints:_points,lectureBackground:_background,retainLectureFiles:_retain,subtitleScope:_scope,...metadata}=original.args;
-  return {mode:'materials',args:{...metadata,...(keepBackground?{lectureBackground:original.args.lectureBackground,subtitleScope:'nearby'}:{subtitleScope:sources.some(s=>s.kind==='subtitle')?'selected':'none'}),excludePreviousImage:!images.length,title:String(original.args.title||'课程资料'),resourceId:String(original.args.resourceId||`bundle:${sources.map(s=>s.resourceId||s.key).sort().join(',')}`),text:texts.join('\n\n'),files,documents,...(images[0]?{screenshot:images[0]}:{}),timePoints:sources.flatMap(source=>source.lines?.map(line=>Math.floor(line.bg/1000))||[])}};
+  const {screenshot:_image,text:_text,files:_files,file:_file,documents:_documents,subtitleLines:_lines,timePoints:_points,lectureBackground:_background,retainLectureFiles:_retain,subtitleScope:_scope,sourceManifest:_manifest,...metadata}=original.args;
+  return {mode:'materials',args:{...metadata,...(keepBackground?{lectureBackground:original.args.lectureBackground,subtitleScope:'nearby'}:{subtitleScope:sources.some(s=>s.kind==='subtitle')?'selected':'none'}),excludePreviousImage:!images.length,title:String(original.args.title||'课程资料'),resourceId:String(original.args.resourceId||`bundle:${sources.map(s=>s.resourceId||s.key).sort().join(',')}`),text:texts.join('\n\n'),files,documents,sourceManifest,...(images[0]?{screenshot:images[0]}:{}),timePoints:sources.flatMap(source=>source.lines?.map(line=>Math.floor(line.bg/1000))||[])}};
 }

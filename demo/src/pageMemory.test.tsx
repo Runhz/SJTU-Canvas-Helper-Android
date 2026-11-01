@@ -2,7 +2,7 @@ import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {cleanup,fireEvent,render,screen} from '@testing-library/react';
 vi.mock('./CanvasWater',()=>({createCanvasWater:()=>({setFill:vi.fn(),impulse:vi.fn(),dispose:vi.fn()})}));
 import App from './App';
-import {accountScope,decodeLecture,decodePage} from './pageMemory';
+import {accountScope,decodeLecture,decodePage,lectureMemoryKey} from './pageMemory';
 beforeEach(()=>{Object.defineProperty(window,'innerWidth',{value:393,configurable:true});localStorage.clear();window.scrollTo=vi.fn();vi.useFakeTimers();});
 afterEach(()=>{cleanup();vi.useRealTimers();});
 describe('page memory',()=>{
@@ -29,5 +29,7 @@ describe('page memory',()=>{
     expect(decodePage({tab:'bad',courseSection:'bad'}).tab).toBe('dashboard');
     expect(decodeLecture({courseId:'1',selected:{id:'2',title:'课堂',source:'canvas',courseId:'1',materialsId:3,raw:{url:'private'}}}).selected?.raw).toEqual({});
     expect(accountScope({accountId:'same',identityId:'1'} as never)).not.toBe(accountScope({accountId:'same',identityId:'2'} as never));
+    expect(lectureMemoryKey('["same","1"]','left')).toBe('canvas-lecture-v1:["same","1"]');
+    expect(lectureMemoryKey('["same","1"]','right')).toBe('canvas-lecture-v1:["same","1"]:right');
   });
 });

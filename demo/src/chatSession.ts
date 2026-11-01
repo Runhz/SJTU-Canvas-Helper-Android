@@ -2,6 +2,7 @@ import * as runtime from './runtime';
 import {saveConversation,savedPayload,reuseDocumentPayload,conversationDeleted,type Conversation} from './chatHistory';
 import {parseStudyAnswer,visibleAnswer} from './studyAssist';
 import {readQuestionMaterials} from './studyFileReader';
+import {resolveLearningSkill} from './learningSkills';
 export interface ChatJob{row:Conversation;busy:boolean;unread:boolean;phase:string;error:string;requestId:string;lastQuestion:string;raw:string;reasoning?:string;reasoningStartedAt?:number;reasoningMs?:number;stopped:boolean;abort?:AbortController;flush?:ReturnType<typeof setTimeout>;save?:ReturnType<typeof setTimeout>;storageError:string}
 const jobs=new Map<string,ChatJob>(),listeners=new Set<()=>void>();
 const visible=new Map<string,number>();
@@ -9,6 +10,7 @@ export function viewChat(id:string,open:boolean){if(!open)return()=>{};visible.s
 let activeScope='';
 export function subscribeChat(listener:()=>void){listeners.add(listener);return()=>{listeners.delete(listener)}}
 function announce(){listeners.forEach(fn=>fn());window.dispatchEvent(new Event('canvas-chat-updated'))}
+export function compactTitle(value:string){const text=value.replace(/\s+/g,' ').trim();return text.length>22?`${text.slice(0,22)}…`:text||'新对话'}
 export function chatJob(id:string){return jobs.get(id)}
 export function sourceJob(scope:string,source:string){return [...jobs.values()].filter(j=>j.row.scope===scope&&j.row.source===source).sort((a,b)=>b.row.updatedAt-a.row.updatedAt)[0]}
 export function chatSummary(scope:string){const rows=[...jobs.values()].filter(j=>j.row.scope===scope);return{busy:rows.some(j=>j.busy),completed:rows.some(j=>j.unread)}}
@@ -33,7 +35,9 @@ export function startChat(row:Conversation,question:string){
   const last=row.messages[row.messages.length-1],retry=last?.role==='user'&&last?.content===question;const previous=retry?row.messages.slice(0,-1):row.messages;
   const next=[...previous,{role:'user' as const,content:question}];
   const pendingArgs={...snapshot.args};delete pendingArgs.screenshot;
-  const job:ChatJob={row:{...row,payload:{...row.payload,args:pendingArgs},messages:next,draft:'',followUps:[],interrupted:true,updatedAt:Date.now(),turns:[...(row.turns||[]).filter(t=>!retry||t.messageIndex!==previous.length),{id:requestId,messageIndex:previous.length,payload:snapshot,status:'open',createdAt:Date.now()}]},busy:true,unread:false,phase:'正在准备资料…',error:'',requestId,lastQuestion:question,raw:'',stopped:false,storageError:''};
+  const genericTitle=['学习助手','新对话','学习助手 · 示例课程'].includes(row.title.trim());
+  const nextTitle=genericTitle?compactTitle(question):row.title;
+  const job:ChatJob={row:{...row,title:nextTitle,payload:{...row.payload,args:pendingArgs},messages:next,draft:'',followUps:[],interrupted:true,updatedAt:Date.now(),turns:[...(row.turns||[]).filter(t=>!retry||t.messageIndex!==previous.length),{id:requestId,messageIndex:previous.length,payload:snapshot,status:'open',createdAt:Date.now()}]},busy:true,unread:false,phase:'正在准备资料…',error:'',requestId,lastQuestion:question,raw:'',stopped:false,storageError:''};
   const readingPayload=job.row.payload;let answerPayload=snapshot;
   for(const [id,old]of jobs)if(jobs.size>=12&&!old.busy){persist(old,true);jobs.delete(id)}
   jobs.set(row.id,job);persist(job,true);announce();
@@ -44,7 +48,8 @@ export function startChat(row:Conversation,question:string){
   // A preceding image remains part of this discussion, while a newly attached image is sent once.
   const imageContext=(payload:Conversation['payload'])=>{const a=payload.args;const files=[...(a.file?[{...(a.file as Record<string,unknown>),courseId:a.courseId}]:[]),...(Array.isArray(a.files)?a.files:[])].map(f=>[String(f.id),String(f.courseId||''),f.updatedAt||'',f.size??null]);return JSON.stringify([payload.mode,a.resourceId,a.positionMs,files]);};
   const reference=snapshot.args.excludePreviousImage===true?undefined:[...(row.turns||[])].reverse().find(t=>t.payload.args.screenshot&&imageContext(t.payload)===imageContext(snapshot));
-  const requestArgs={...snapshot.args,...(!snapshot.args.screenshot&&reference?{screenshot:reference.payload.args.screenshot}:{}),readMode:row.readMode,studyAssist:true,knownSymbols:(row.symbols||[]).map(s=>`${s.symbol}：${s.meaning}（原文：${s.evidence}）`).join('\n')};
+  const selectedSkill=resolveLearningSkill(row.payload.args.learningSkill,row.scope);
+  const requestArgs={...snapshot.args,...(!snapshot.args.screenshot&&reference?{screenshot:reference.payload.args.screenshot}:{}),readMode:row.readMode,studyAssist:true,knownSymbols:(row.symbols||[]).map(s=>`${s.symbol}：${s.meaning}（原文：${s.evidence}）`).join('\n'),...(selectedSkill?.prompt&&row.payload.args.learningSkill!=='none'?{learningSkillPrompt:selectedSkill.prompt}:{})};
   const onPhase=(phase:string)=>{if(!job.stopped){job.phase=phase;announce()}};
   const onReasoning=(text:string)=>{if(job.stopped||jobs.get(row.id)!==job||!text)return;job.reasoningStartedAt??=Date.now();job.reasoningMs=Date.now()-job.reasoningStartedAt;const next=(job.reasoning||'')+text;job.reasoning=next.length>64000?next.slice(0,63800)+'\n（思考内容较长，仅保留前面的部分）':next;if(!job.flush)job.flush=setTimeout(flush,80)};
   const needsReading=snapshot.mode==='file'||Array.isArray(snapshot.args.files)&&snapshot.args.files.length>0;
@@ -53,14 +58,18 @@ export function startChat(row:Conversation,question:string){
     const prepared=await readQuestionMaterials(snapshot,row.scope,job.abort.signal,onPhase,question);
     if(job.stopped||jobs.get(row.id)!==job)throw Error('已停止');
     if(prepared.args.documents){
-      const current=job.row.payload,payload=current===readingPayload?{...current,args:{...current.args,documents:prepared.args.documents,documentPages:prepared.args.documentPages}}:reuseDocumentPayload(current,prepared);
-      job.row={...job.row,payload,turns:job.row.turns?.map(t=>t.id===requestId?{...t,payload:savedPayload(prepared)}:t)};
+      const current=job.row.payload,payload=current===readingPayload?{...current,args:{...current.args,documents:prepared.args.documents,documentPages:prepared.args.documentPages,sourceManifest:prepared.args.sourceManifest}}:reuseDocumentPayload(current,prepared);
+      const documents=Array.isArray(payload.args.documents)?payload.args.documents as {id:string;name:string;coverage:string;images?:{page:number}[]}[]:[];
+      const manifestSource=current===readingPayload?prepared.args.sourceManifest:payload.args.sourceManifest;
+      const sourceManifest=current===readingPayload&&Array.isArray(manifestSource)?manifestSource:[...(Array.isArray(manifestSource)?manifestSource.filter((entry:{kind?:unknown})=>entry?.kind!=='document'):[]),...documents.map(doc=>({kind:'document',id:doc.id,title:doc.name,coverage:doc.coverage,...(doc.images?.length?{pages:doc.images.map(image=>image.page)}:{})}))];
+      const nextPayload={...payload,args:{...payload.args,sourceManifest}};
+      job.row={...job.row,payload:nextPayload,turns:job.row.turns?.map(t=>t.id===requestId?{...t,payload:savedPayload(prepared)}:t)};
       persist(job,true);announce();
     }
     answerPayload=prepared;
-    return runtime.ai(prepared.mode,{...requestArgs,...(prepared.args.documents?{documents:prepared.args.documents,documentPages:prepared.args.documentPages}:{})},question,chunk,previous,{requestId,onPhase,onReasoning});
+    return runtime.ai(prepared.mode,{...requestArgs,...(prepared.args.documents?{documents:prepared.args.documents,documentPages:prepared.args.documentPages,sourceManifest:prepared.args.sourceManifest}:{})},question,chunk,previous,{requestId,onPhase,onReasoning});
   })():runtime.NATIVE?runtime.ai(snapshot.mode,requestArgs,question,chunk,previous,{requestId,onPhase,onReasoning}):demo(chunk,()=>job.stopped);
   void request.then(finish,fail);
 }
 async function demo(chunk:(s:string)=>void,stopped:()=>boolean){const text='这是本地交互演示，未调用模型。\n\n可以先区分**结论**和它依赖的条件，再对照当前推导。\n\n$$u_L=L\\frac{di}{dt}$$\n\n你可以选择下面的追问，或引用回答中的某一句继续问。';for(const part of text.match(/.{1,16}|\n/g)||[]){await new Promise(r=>setTimeout(r,35));if(stopped())throw Error('已停止');chunk(part)}return text+'\n<study_meta>{"questions":["这个结论成立需要哪些条件？","能举一个具体例子吗？","能展开中间的推导吗？"],"symbols":[]}</study_meta>'}
-if(typeof window!=='undefined'){window.addEventListener('pagehide',flushChats);document.addEventListener('visibilitychange',()=>{if(document.hidden)flushChats()});window.addEventListener('canvas-conversation-deleted',e=>{const detail=(e as CustomEvent).detail;if(typeof detail?.id==='string'&&jobs.get(detail.id)?.row.scope===detail.scope)forgetChat(detail.id);else announce();})}
+if(typeof window!=='undefined'){window.addEventListener('pagehide',flushChats);document.addEventListener('visibilitychange',()=>{if(document.hidden)flushChats()});window.addEventListener('canvas-conversation-deleted',e=>{const detail=(e as CustomEvent).detail;if(typeof detail?.id==='string'&&jobs.get(detail.id)?.row.scope===detail.scope)forgetChat(detail.id);else announce();});window.addEventListener('canvas-account-logout',e=>{const scope=(e as CustomEvent).detail?.scope;if(typeof scope!=='string')return;for(const [id,job]of jobs){if(job.row.scope!==scope)continue;job.stopped=true;job.abort?.abort();clearTimeout(job.flush);clearTimeout(job.save);jobs.delete(id);if(runtime.NATIVE)void runtime.cancelAi(job.requestId).catch(()=>{});}announce();});}

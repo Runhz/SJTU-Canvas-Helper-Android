@@ -1,0 +1,576 @@
+/* First visual iteration: content-first hierarchy, quiet shells, and balanced controls. */
+
+:root {
+  --iteration-shadow: 0 10px 30px rgba(65, 50, 38, .07);
+  --iteration-shadow-soft: 0 4px 16px rgba(65, 50, 38, .06);
+}
+
+/* The split workspace should read as one continuous surface. */
+.workspace-pad {
+  gap: 0;
+  background: var(--bg);
+}
+.workspace-rail {
+  flex-basis: 72px;
+  gap: 16px;
+  padding: 16px 8px 14px;
+  border-right: 0;
+  background: transparent;
+}
+.workspace-rail > nav {
+  gap: 8px;
+  justify-content: center;
+}
+.workspace-rail nav > button {
+  min-height: 51px;
+  gap: 5px;
+  border-radius: 15px;
+  transition: background .18s ease, color .18s ease, transform .18s ease;
+}
+.workspace-rail nav > button:active { transform: scale(.96); }
+.workspace-rail nav > button[aria-current='page'] {
+  background: var(--accent-soft);
+}
+.workspace-utilities { margin-top: auto; }
+.workspace-utilities > button {
+  width: 42px;
+  height: 40px;
+  border-radius: 13px;
+  background: transparent;
+}
+.workspace-utilities > button.selected {
+  background: var(--accent-soft);
+}
+.workspace-pad > .workspace-pages,
+.workspace-pad.split > .workspace-pages {
+  gap: 0 !important;
+  padding: 0 !important;
+}
+.workspace-pad .workspace-pane {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: var(--bg);
+  box-shadow: none !important;
+}
+.workspace-pad.split .workspace-pane + .workspace-pane {
+  border-left: 1px solid var(--line) !important;
+}
+.workspace-pad.split .workspace-pane.active {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.workspace-pane-label {
+  height: 38px;
+  padding: 8px 18px;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+}
+.workspace-pane.active > .workspace-pane-label {
+  color: var(--accent);
+}
+
+/* Keep the mobile navigation evenly distributed and calm. */
+.app-shell:not(.tablet-layout) .bottom-nav {
+  display: grid !important;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+  padding-inline: 8px;
+}
+.app-shell:not(.tablet-layout) .bottom-nav > button {
+  width: 100%;
+  min-width: 0;
+  border-radius: 14px;
+}
+.app-shell:not(.tablet-layout) .bottom-nav > button strong {
+  white-space: nowrap;
+}
+.app-shell:not(.tablet-layout) .bottom-nav:has(.nav-layout-toggle) {
+  grid-template-columns: repeat(6, minmax(0, 1fr)) 40px;
+}
+.app-shell:not(.tablet-layout) .bottom-nav > .nav-layout-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+}
+.app-shell:not(.tablet-layout) .bottom-nav > .nav-layout-toggle > .icon-button {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  color: var(--accent);
+}
+
+/* Assistant home: no slogan, one clear entry point, quiet history rows. */
+.assistant-start {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 0 20px;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  border-radius: 0;
+}
+.assistant-start > svg { color: var(--accent); }
+.assistant-start h2 { margin: 0; font-size: 24px; letter-spacing: -.6px; }
+.assistant-start p { display: none; }
+.assistant-start > .button {
+  min-height: 40px;
+  padding-inline: 14px;
+  border-radius: 13px;
+}
+.assistant-home > .underlined-tabs {
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+.assistant-conversations { gap: 9px; }
+.assistant-conversation {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 15px;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: var(--card);
+  box-shadow: 0 2px 10px rgba(65, 50, 38, .025);
+}
+.assistant-conversation:hover { box-shadow: var(--iteration-shadow-soft); }
+.assistant-conversation-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.assistant-conversation > span:nth-child(2) { min-width: 0; }
+.assistant-conversation strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Full-page assistant route: conversation is the primary surface. */
+.app-shell:has(.assistant-home) .app-content {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding-inline: clamp(16px, 2vw, 28px);
+}
+.app-shell:has(.assistant-home) .assistant-home {
+  width: 100%;
+  max-width: 980px;
+  margin-inline: auto;
+  min-height: 100%;
+  padding-bottom: 20px;
+}
+.study-ai-overlay.resizable-chat .modal {
+  background: var(--card);
+  border-color: var(--line);
+  box-shadow: 0 24px 70px rgba(65, 50, 38, .18);
+}
+.study-ai-overlay.resizable-chat .modal-header {
+  background: transparent;
+  border-color: var(--line);
+}
+.study-ai-overlay.resizable-chat .modal-header h2 {
+  max-width: 34ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.study-chat .chat-toolbar {
+  border-bottom-color: var(--line);
+}
+.study-chat .ai-messages {
+  padding-inline: clamp(8px, 4vw, 56px);
+}
+.study-chat .chat-message {
+  max-width: 860px;
+  margin-inline: auto;
+}
+.study-chat .study-compose {
+  width: min(900px, calc(100% - 22px));
+  max-width: 900px;
+  margin: 0 auto 10px;
+  border-radius: 17px;
+  box-shadow: var(--iteration-shadow-soft);
+}
+
+/* The conversation is the page. Opening a chat should not create a small
+   floating card over the app; its controls follow the same hierarchy as GPT's
+   web conversation view. */
+.study-ai-overlay.resizable-chat {
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
+  background: var(--bg);
+  backdrop-filter: none;
+}
+.study-ai-overlay.resizable-chat .modal {
+  width: 100% !important;
+  max-width: none !important;
+  height: 100dvh !important;
+  max-height: none !important;
+  padding: 14px clamp(16px, 4vw, 56px) 12px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--bg);
+}
+.study-ai-overlay.resizable-chat .modal-header {
+  position: relative;
+  width: min(980px, 100%);
+  margin: 0 auto 8px;
+  padding: 3px 48px 10px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+.study-ai-overlay.resizable-chat .modal-header h2 { font-size: 16px; }
+.study-ai-overlay.resizable-chat .chat-window-expand,
+.study-ai-overlay.resizable-chat .chat-window-resize {
+  display: none;
+}
+.study-ai-overlay.resizable-chat .modal > .study-chat {
+  width: min(980px, 100%);
+  margin-inline: auto;
+}
+.study-chat .ai-messages {
+  width: 100%;
+  max-width: 980px;
+  margin-inline: auto;
+  padding: 18px 0 22px;
+}
+.study-chat .chat-toolbar {
+  border-bottom: 0 !important;
+}
+.study-chat .chat-message > small {
+  display: none;
+}
+.study-chat .chat-message.user > .study-question-bubble {
+  width: fit-content;
+  max-width: min(76%, 720px);
+  margin-left: auto;
+  background: var(--surface-soft);
+  border: 0;
+  border-radius: 18px 18px 5px 18px;
+  box-shadow: none;
+}
+.study-chat .chat-message.assistant > .study-answer-bubble {
+  max-width: 100%;
+  padding: 14px 16px !important;
+  background: var(--surface-soft) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 17px !important;
+  box-shadow: none !important;
+}
+.study-chat .chat-message.assistant .rich-answer { line-height: 1.9; }
+.study-chat .answer-actions {
+  margin-top: 10px;
+}
+.study-chat .answer-actions > div {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.study-chat .answer-actions button {
+  min-height: 31px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: transparent;
+}
+.study-chat .question-state { margin-left: auto; width: fit-content; }
+.study-chat .study-compose {
+  width: min(980px, 100%);
+  margin-inline: auto;
+  background: var(--card);
+}
+
+/* Once the chat owns the page, its title controls stay inside the same
+   reading column instead of floating against the browser edge. */
+.study-ai-overlay.resizable-chat .modal-header > .icon-button {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+/* The recording/file view yields its right side to the docked assistant. The
+   page and the assistant then own separate scroll containers. */
+.has-study-dock .app-shell {
+  width: calc(100% - var(--study-dock-width, 456px)) !important;
+  transition: width .2s ease;
+}
+.has-study-dock .app-content {
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+/* Recording: one strong player, then balanced metadata and tab controls. */
+.learning-layout { gap: 20px; }
+.learning-player {
+  min-width: 0;
+  padding: 0 0 10px;
+}
+.learning-player > .player {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 21px;
+  box-shadow: var(--iteration-shadow);
+}
+.learning-player .player-art { border-radius: 20px 20px 0 0; }
+.learning-player .player-demo {
+  background: transparent;
+  padding: 0;
+  color: color-mix(in srgb, var(--muted) 70%, transparent);
+}
+.learning-player .player-controls {
+  padding: 9px 14px 12px;
+  background: linear-gradient(180deg, #20232b, #17191f);
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+.learning-player .player-controls > input {
+  height: 5px;
+  margin: 4px 0 11px;
+  border-radius: 999px;
+}
+.learning-player .player-controls > div { gap: 10px; }
+.learning-player .player-controls > div > button {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.08);
+}
+.learning-player .player-controls > div > span {
+  font-size: 10px;
+  letter-spacing: .15px;
+}
+.learning-player .player-controls > div > span i { color: rgba(223,232,215,.62); }
+.learning-player .player-controls select {
+  width: 48px;
+  padding: 6px 5px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 8px;
+  background: rgba(255,255,255,.06);
+}
+.video-title {
+  display: grid;
+  gap: 3px;
+  margin: 15px 0 12px;
+}
+.video-title h2 { margin: 0; font-size: 18px; letter-spacing: -.25px; }
+.video-title p { margin: 0; }
+.angle-switch {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--surface-soft);
+}
+.angle-switch > button {
+  min-height: 35px;
+  padding: 7px 4px;
+  border: 0;
+  border-radius: 9px;
+}
+.angle-switch > button.selected {
+  background: var(--card);
+  box-shadow: 0 2px 7px rgba(65, 50, 38, .08);
+}
+.video-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin: 13px 0;
+}
+.video-actions > button {
+  min-height: 43px;
+  border-radius: 13px;
+  background: var(--card);
+}
+.learning-materials > .underlined-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-soft);
+}
+.learning-materials > .underlined-tabs > button,
+.learning-materials > .underlined-tabs > button:last-child {
+  min-height: 38px;
+  flex: 1;
+  padding: 8px 4px;
+  border-radius: 9px;
+}
+.learning-materials > .underlined-tabs > button.selected {
+  background: var(--card);
+  box-shadow: 0 2px 7px rgba(65, 50, 38, .08);
+}
+
+/* A rounded glass-like vessel instead of a hard square water block. */
+.overview-card .water-tank {
+  width: 168px;
+  flex-basis: 168px;
+}
+.overview-card .water-tank-vessel {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.overview-card .water-tank-vessel::before,
+.overview-card .water-tank-vessel::after { display: none; }
+.overview-card .water-tank-vessel .water-tank-stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  padding: 0 !important;
+  border-radius: 24%;
+  overflow: hidden;
+  background: transparent;
+  box-shadow: none;
+}
+.overview-card .water-tank-vessel .water-tank-stage canvas {
+  border-radius: 24%;
+  transform: scale(1.015);
+}
+
+/* Document actions share one quiet control language; the primary action only
+   gets a light accent treatment so the preview remains the focus. */
+.document-reader .reader-actions {
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+.document-reader .reader-actions > .button,
+.document-reader .reader-actions > .text-button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 12px;
+}
+.document-reader .reader-actions > .button.primary {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+.document-reader .reader-actions > .text-button { display: inline-flex; align-items: center; gap: 5px; }
+.study-panel-footer {
+  justify-content: flex-end;
+  padding-top: 12px;
+}
+.study-panel-footer > .button.primary {
+  min-width: 122px;
+  min-height: 42px;
+  border-radius: 12px;
+}
+.floating-study {
+  border-radius: 18px;
+  box-shadow: 0 12px 40px rgba(40, 33, 28, .14);
+}
+.floating-study-handle {
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+}
+.overview-card .water-tank-count { margin-top: 3px; }
+.overview-card .overview-number {
+  font-size: clamp(42px, 6vw, 54px);
+  letter-spacing: -2px;
+}
+
+@media (max-width: 720px) {
+  .assistant-start { grid-template-columns: auto minmax(0, 1fr); }
+  .assistant-start > .button { grid-column: 2; justify-self: start; }
+  .workspace-pad .learning-layout { display: block; }
+  .workspace-pad .learning-materials { margin-top: 18px; }
+}
+
+@media (max-width: 480px) {
+  .app-shell:not(.tablet-layout) .bottom-nav { padding-inline: 5px; gap: 2px; }
+  .app-shell:not(.tablet-layout) .bottom-nav > button { min-height: 53px; }
+  .assistant-start { gap: 11px; }
+  .assistant-start h2 { font-size: 22px; }
+  .video-actions { gap: 7px; }
+  .video-actions > button { min-height: 40px; font-size: 12px; }
+  .overview-card .water-tank { width: 142px; flex-basis: 142px; }
+  .overview-card .water-tank-vessel { width: 100%; height: auto; }
+}
+
+/* Tablet navigation uses the entire rail height instead of clustering at the top. */
+.tablet-layout .bottom-nav {
+  justify-content: space-evenly !important;
+  gap: 0 !important;
+  padding-block: 20px !important;
+}
+.tablet-layout .bottom-nav > button {
+  flex: 0 0 auto;
+  min-height: 58px;
+}
+.tablet-layout .bottom-nav > .nav-layout-toggle {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Keep the tablet rail anchored when the overview-only search header is
+   removed on courses, recordings, files, or settings. The right content may
+   change, but the navigation keeps the same vertical origin. */
+@media (min-width: 701px) {
+  .tablet-layout.app-shell.content-first {
+    grid-template-rows: 70px auto minmax(0, 1fr);
+  }
+  .tablet-layout.app-shell.content-first > .bottom-nav {
+    grid-row: 2 / 4 !important;
+  }
+}
+
+/* The global search already owns the overview search action. Keep the deadline
+   query state for keyboard and accessibility flows without rendering a second
+   visible search box on the page. */
+.dashboard-timeline .deadline-tools { position: relative; }
+.dashboard-timeline .deadline-tools > .compact-search {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .assistant-conversation, .angle-switch > button, .video-actions > button,
+  .learning-materials > .underlined-tabs > button, .workspace-rail nav > button {
+    transition: transform .18s ease, background-color .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .assistant-conversation:active, .angle-switch > button:active,
+  .video-actions > button:active, .learning-materials > .underlined-tabs > button:active {
+    transform: scale(.985);
+  }
+}
+
+@media (min-width: 701px) {
+  .modal-overlay:not(.study-ai-overlay) > .modal {
+    border-radius: 24px !important;
+    overflow: hidden;
+  }
+}

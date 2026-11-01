@@ -138,8 +138,8 @@
 .slide-deck-page { position:relative; }
 .slide-deck-loading { position:absolute; top:12px; left:12px; display:flex; align-items:center; gap:6px; padding:7px 10px; border:1px solid var(--line); border-radius:10px; background:var(--card); color:var(--muted); font-size:12px; }
 .slide-deck-empty { padding:20px; text-align:center; }
-.water-pool .water-tank-stage { border-radius:16px; background:none; }
-.water-pool .water-tank-stage canvas { border-radius:0; }
+.water-pool .water-tank-stage { border-radius:16px; background:none; overflow:clip; contain:paint; }
+.water-pool .water-tank-stage canvas { border-radius:0; clip-path:inset(0); }
 .water-pool .water-loading canvas { opacity:0; }
 .water-pool .water-last-frame { position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none; }
 .water-pool .water-tank-fallback { inset:28px 20px 32px; border-radius:10px; }

@@ -4,7 +4,7 @@ import {normalizeSlides} from './lectureSlideTimeline';
 import * as runtime from './runtime';
 import {layoutChannel} from './layoutChannel';
 export interface PlayerStatus {opened:boolean;positionMs:number;durationMs:number;playing:boolean;fullscreen:boolean;dual:boolean;resourceId:string;speed:number;camera:number}
-export function InlinePlayer({recording,obscured,resume=false,seekTo,notify,onStatus,onScreenshot,slides=[],subtitles=[]}:{subtitles?:{bg:number;ed:number;res:string}[];slides?:Record<string,unknown>[];recording:runtime.Recording;obscured:boolean;resume?:boolean;seekTo?:{id:string;positionMs:number};notify:(s:string)=>void;onStatus?:(s:PlayerStatus)=>void;onScreenshot?:(image:string,ms:number)=>void}){
+export function InlinePlayer({recording,obscured,resume=false,resumePositionMs=0,seekTo,notify,onStatus,onScreenshot,slides=[],subtitles=[]}:{subtitles?:{bg:number;ed:number;res:string}[];slides?:Record<string,unknown>[];recording:runtime.Recording;obscured:boolean;resume?:boolean;resumePositionMs?:number;seekTo?:{id:string;positionMs:number};notify:(s:string)=>void;onStatus?:(s:PlayerStatus)=>void;onScreenshot?:(image:string,ms:number)=>void}){
   const ref=useRef<HTMLDivElement>(null),opened=useRef(false),generation=useRef(0);
   const [ready,setReady]=useState(false),[busy,setBusy]=useState(false);
   const [status,setStatus]=useState<PlayerStatus|null>(null),[trackCount,setTrackCount]=useState(1),[capturing,setCapturing]=useState(false);
@@ -19,7 +19,7 @@ export function InlinePlayer({recording,obscured,resume=false,seekTo,notify,onSt
   };
   async function start(autoplay=true){
     const active=++generation.current;setBusy(true);
-    try{const tracks=await runtime.recordingTracks(recording);if(active!==generation.current)return;setTrackCount(tracks.length);await runtime.native('embedPlayer',{tracks,title:recording.title,resourceId,rect:geometry(),slides:normalizeSlides(slides),subtitles,...(pendingSeek.current?{positionMs:pendingSeek.current.positionMs}:{}),autoplay:autoplay&&!covered.current&&!document.hidden,visible:!covered.current&&!document.hidden});if(active!==generation.current){await runtime.native('playerControl',{action:'close',resourceId});return;}opened.current=true;setReady(true);}
+    try{const tracks=await runtime.recordingTracks(recording);if(active!==generation.current)return;setTrackCount(tracks.length);const initialPosition=pendingSeek.current?.positionMs??(resume?Math.max(0,resumePositionMs):0);await runtime.native('embedPlayer',{tracks,title:recording.title,resourceId,rect:geometry(),slides:normalizeSlides(slides),subtitles,...(initialPosition>0?{positionMs:initialPosition}:{}),autoplay:autoplay&&!covered.current&&!document.hidden,visible:!covered.current&&!document.hidden});if(active!==generation.current){await runtime.native('playerControl',{action:'close',resourceId});return;}opened.current=true;setReady(true);}
     catch(e){notify(String(e));}finally{if(active===generation.current)setBusy(false);}
   }
   useEffect(()=>{const question=(event:Event)=>{const value=(event as CustomEvent).detail;if(value?.resourceId===resourceId&&typeof value.image==='string'&&/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value.image)&&Number.isFinite(value.positionMs))onScreenshot?.(value.image,value.positionMs)};window.addEventListener('canvas-player-question',question);return()=>window.removeEventListener('canvas-player-question',question)},[resourceId,onScreenshot]);
